@@ -1,3 +1,5 @@
+# **renovador-de-livros**
+
 📚 Renovador Automático Biblioteca Sophia - UFTM
 Um automatizador de renovação de livros para a plataforma Biblioteca Sophia da Universidade Federal do Triângulo Mineiro (UFTM).
 🎯 Sobre o Projeto
@@ -12,15 +14,15 @@ Esta aplicação NÃO armazena, retém ou transmite suas credenciais de acesso. 
 💻 Execução local no seu computador
 🚀 Processo rápido e eficiente
 
-🛠️ Tecnologias Utilizadas
+#🛠️ Tecnologias Utilizadas
 
 Electron.js - Framework para aplicações desktop multiplataforma
 Playwright - Automação de navegador
 HTML/CSS - Interface do usuário
 Ícone - Gerado por ChatGPT
 
-📦 Instalação
-Windows
+#📦 Instalação
+**Windows**
 Opção 1: Instalador (Setup)
 
 Acesse a página de Releases
@@ -37,7 +39,7 @@ Extraia o conteúdo para uma pasta de sua preferência
 Execute o arquivo Renovador-Sophia.exe
 Pronto! Não requer instalação e pode ser executado de qualquer lugar (inclusive pen drive)
 
-macOS
+**macOS**
 
 Acesse a página de Releases
 Baixe o arquivo Renovador-Sophia-x.x.x.dmg
@@ -46,7 +48,8 @@ Arraste o ícone do aplicativo para a pasta "Applications"
 Abra o Launchpad e procure por "Renovador Sophia"
 
 Nota para macOS: Na primeira execução, você pode precisar autorizar o aplicativo em "Configurações do Sistema > Privacidade e Segurança", pois o app não está assinado digitalmente pela Apple.
-Linux
+
+**Linux**
 Debian/Ubuntu (.deb)
 bash# Baixe o arquivo .deb da página de releases
 wget https://github.com/seu-usuario/renovador-sophia-uftm/releases/download/vx.x.x/renovador-sophia_x.x.x_amd64.deb
@@ -89,13 +92,13 @@ npm start
 npm run build
 🚀 Como Usar
 
-Abra a aplicação
+# Abra a aplicação
 Insira suas credenciais de acesso ao sistema Sophia
 Clique em "Renovar Livros"
 Aguarde o processo de automação concluir
 Pronto! Seus livros foram renovados
 
-📄 Licença
+# 📄 Licença
 Este projeto está licenciado sob a GNU General Public License v3.0 (GPL-3.0).
 Isso significa que você é livre para:
 
@@ -118,11 +121,11 @@ Contribuições são bem-vindas! Este é um projeto livre e comunitário. Sinta-
 🔧 Enviar pull requests
 📖 Melhorar a documentação
 
-⚖️ Disclaimer
+# ⚖️ Disclaimer
 Este projeto não é oficialmente vinculado à UFTM ou à plataforma Biblioteca Sophia. É uma ferramenta independente desenvolvida para facilitar o acesso ao sistema, respeitando todos os termos de uso da plataforma.
 👨‍💻 Autor
-Desenvolvido com ❤️ por [Seu Nome]
-🙏 Agradecimentos
+Desenvolvido com ❤️ e cafeína por Hebert
+# 🙏 Agradecimentos
 
 À comunidade open source
 À UFTM e sua biblioteca
