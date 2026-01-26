@@ -1,4 +1,3 @@
-# renovador-de-livros
 📚 Renovador Automático Biblioteca Sophia - UFTM
 Um automatizador de renovação de livros para a plataforma Biblioteca Sophia da Universidade Federal do Triângulo Mineiro (UFTM).
 🎯 Sobre o Projeto
@@ -21,6 +20,59 @@ HTML/CSS - Interface do usuário
 Ícone - Gerado por ChatGPT
 
 📦 Instalação
+Windows
+Opção 1: Instalador (Setup)
+
+Acesse a página de Releases
+Baixe o arquivo Renovador-Sophia-Setup-x.x.x.exe
+Execute o instalador
+Siga as instruções na tela
+Após a instalação, procure por "Renovador Sophia" no menu Iniciar
+
+Opção 2: Versão Portátil
+
+Acesse a página de Releases
+Baixe o arquivo Renovador-Sophia-Portable-x.x.x.zip
+Extraia o conteúdo para uma pasta de sua preferência
+Execute o arquivo Renovador-Sophia.exe
+Pronto! Não requer instalação e pode ser executado de qualquer lugar (inclusive pen drive)
+
+macOS
+
+Acesse a página de Releases
+Baixe o arquivo Renovador-Sophia-x.x.x.dmg
+Abra o arquivo .dmg baixado
+Arraste o ícone do aplicativo para a pasta "Applications"
+Abra o Launchpad e procure por "Renovador Sophia"
+
+Nota para macOS: Na primeira execução, você pode precisar autorizar o aplicativo em "Configurações do Sistema > Privacidade e Segurança", pois o app não está assinado digitalmente pela Apple.
+Linux
+Debian/Ubuntu (.deb)
+bash# Baixe o arquivo .deb da página de releases
+wget https://github.com/seu-usuario/renovador-sophia-uftm/releases/download/vx.x.x/renovador-sophia_x.x.x_amd64.deb
+
+# Instale usando dpkg
+sudo dpkg -i renovador-sophia_x.x.x_amd64.deb
+
+# Se houver dependências faltando, execute:
+sudo apt-get install -f
+Fedora/RHEL (.rpm)
+bash# Baixe o arquivo .rpm da página de releases
+wget https://github.com/seu-usuario/renovador-sophia-uftm/releases/download/vx.x.x/renovador-sophia-x.x.x.x86_64.rpm
+
+# Instale usando dnf
+sudo dnf install renovador-sophia-x.x.x.x86_64.rpm
+AppImage (Todas as distribuições)
+bash# Baixe o AppImage
+wget https://github.com/seu-usuario/renovador-sophia-uftm/releases/download/vx.x.x/Renovador-Sophia-x.x.x.AppImage
+
+# Torne o arquivo executável
+chmod +x Renovador-Sophia-x.x.x.AppImage
+
+# Execute o aplicativo
+./Renovador-Sophia-x.x.x.AppImage
+🔧 Compilar do Código Fonte
+Se preferir compilar a aplicação você mesmo:
 bash# Clone o repositório
 git clone https://github.com/seu-usuario/renovador-sophia-uftm.git
 
@@ -30,8 +82,11 @@ cd renovador-sophia-uftm
 # Instale as dependências
 npm install
 
-# Execute a aplicação
+# Execute em modo de desenvolvimento
 npm start
+
+# Ou compile para o seu sistema operacional
+npm run build
 🚀 Como Usar
 
 Abra a aplicação
@@ -66,7 +121,7 @@ Contribuições são bem-vindas! Este é um projeto livre e comunitário. Sinta-
 ⚖️ Disclaimer
 Este projeto não é oficialmente vinculado à UFTM ou à plataforma Biblioteca Sophia. É uma ferramenta independente desenvolvida para facilitar o acesso ao sistema, respeitando todos os termos de uso da plataforma.
 👨‍💻 Autor
-Desenvolvido com ❤️ e cafeína por Hebert
+Desenvolvido com ❤️ por [Seu Nome]
 🙏 Agradecimentos
 
 À comunidade open source
