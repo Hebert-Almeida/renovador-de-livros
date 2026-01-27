@@ -17,12 +17,12 @@ Esta aplicação NÃO armazena, retém ou transmite suas credenciais de acesso. 
 💻 Execução local no seu computador
 🚀 Processo rápido e eficiente
 
-#🛠️ Tecnologias Utilizadas
+🛠️ Tecnologias Utilizadas
 
-Electron.js - Framework para aplicações desktop multiplataforma
-Playwright - Automação de navegador
-HTML/CSS - Interface do usuário
-Ícone - Gerado por ChatGPT
+* Electron.js - Framework para aplicações desktop multiplataforma
+* Playwright - Automação de navegador
+* HTML/CSS - Interface do usuário
+* Ícone - Gerado por ChatGPT
 
 # 📦 Instalação
 **Windows**
