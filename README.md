@@ -52,7 +52,7 @@ Abra o Launchpad e procure por "Renovador Sophia"
 
 Nota para macOS: Na primeira execução, você pode precisar autorizar o aplicativo em "Configurações do Sistema > Privacidade e Segurança", pois o app não está assinado digitalmente pela Apple.
 
-🚀 Como Usar
+# 🚀 Como Usar
 
 # Abra a aplicação
 Insira suas credenciais de acesso ao sistema Sophia
