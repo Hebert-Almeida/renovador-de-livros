@@ -2,10 +2,13 @@
 
 📚 Renovador Automático Biblioteca Sophia - UFTM
 Um automatizador de renovação de livros para a plataforma Biblioteca Sophia da Universidade Federal do Triângulo Mineiro (UFTM).
+
 🎯 Sobre o Projeto
 Este é um projeto livre e de código aberto que automatiza o processo de renovação de livros emprestados através da plataforma Biblioteca Sophia. A aplicação foi desenvolvida para facilitar a vida dos estudantes e servidores da UFTM, eliminando a necessidade de acessar manualmente o sistema para renovar empréstimos.
+
 ⚠️ Importante: Segurança e Privacidade
 Esta aplicação NÃO armazena, retém ou transmite suas credenciais de acesso. Trata-se apenas de um automatizador que interage diretamente com o sistema Sophia em seu computador, da mesma forma que você faria manualmente através do navegador. Suas credenciais permanecem seguras e sob seu controle.
+
 ✨ Funcionalidades
 
 🔄 Renovação automática de livros emprestados
@@ -21,7 +24,7 @@ Playwright - Automação de navegador
 HTML/CSS - Interface do usuário
 Ícone - Gerado por ChatGPT
 
-#📦 Instalação
+# 📦 Instalação
 **Windows**
 Opção 1: Instalador (Setup)
 
@@ -49,47 +52,6 @@ Abra o Launchpad e procure por "Renovador Sophia"
 
 Nota para macOS: Na primeira execução, você pode precisar autorizar o aplicativo em "Configurações do Sistema > Privacidade e Segurança", pois o app não está assinado digitalmente pela Apple.
 
-**Linux**
-Debian/Ubuntu (.deb)
-bash# Baixe o arquivo .deb da página de releases
-wget https://github.com/seu-usuario/renovador-sophia-uftm/releases/download/vx.x.x/renovador-sophia_x.x.x_amd64.deb
-
-# Instale usando dpkg
-sudo dpkg -i renovador-sophia_x.x.x_amd64.deb
-
-# Se houver dependências faltando, execute:
-sudo apt-get install -f
-Fedora/RHEL (.rpm)
-bash# Baixe o arquivo .rpm da página de releases
-wget https://github.com/seu-usuario/renovador-sophia-uftm/releases/download/vx.x.x/renovador-sophia-x.x.x.x86_64.rpm
-
-# Instale usando dnf
-sudo dnf install renovador-sophia-x.x.x.x86_64.rpm
-AppImage (Todas as distribuições)
-bash# Baixe o AppImage
-wget https://github.com/seu-usuario/renovador-sophia-uftm/releases/download/vx.x.x/Renovador-Sophia-x.x.x.AppImage
-
-# Torne o arquivo executável
-chmod +x Renovador-Sophia-x.x.x.AppImage
-
-# Execute o aplicativo
-./Renovador-Sophia-x.x.x.AppImage
-🔧 Compilar do Código Fonte
-Se preferir compilar a aplicação você mesmo:
-bash# Clone o repositório
-git clone https://github.com/seu-usuario/renovador-sophia-uftm.git
-
-# Entre no diretório
-cd renovador-sophia-uftm
-
-# Instale as dependências
-npm install
-
-# Execute em modo de desenvolvimento
-npm start
-
-# Ou compile para o seu sistema operacional
-npm run build
 🚀 Como Usar
 
 # Abra a aplicação
