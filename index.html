@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Renovador de Biblioteca</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Renovador de Biblioteca</h1>
+            <p class="subtitle">Sistema Sophia - Renovação Automática - feito por Hebert </p>
+        </div>
+
+        <div class="form-container">
+            <div class="input-group">
+                <label for="login">
+                    <span class="label-icon">👤</span>
+                    Login
+                </label>
+                <input type="text" id="login" placeholder="Digite seu login" autocomplete="username" autofocus>
+            </div>
+
+            <div class="input-group">
+                <label for="senha">
+                    <span class="label-icon">🔒</span>
+                    Senha
+                </label>
+                <input type="password" id="senha" placeholder="Digite sua senha" autocomplete="current-password">
+            </div>
+
+            <button id="btnRenovar" class="btn-primary">
+                Renovar Livros
+            </button>
+        </div>
+
+        <div id="progressoContainer" class="progresso-container hidden">
+            <div class="progresso-header">
+                <h3>📋 Progresso da Renovação</h3>
+                <div class="spinner"></div>
+            </div>
+            <div id="progressoTexto" class="progresso-log"></div>
+        </div>
+
+        <div id="livrosContainer" class="livros-container hidden">
+            <h3>📖 Livros Processados</h3>
+            <ul id="listaLivros"></ul>
+        </div>
+    </div>
+
+    <!-- TOAST DE NOTIFICAÇÃO -->
+    <div id="toast" class="toast hidden"></div>
+
+    <script src="renderer.js"></script>
+</body>
+
+</html>

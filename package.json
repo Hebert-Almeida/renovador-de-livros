@@ -1,0 +1,78 @@
+{
+  "name": "renovador-livros",
+  "version": "1.0.0",
+  "description": "Aplicativo para renovação automática de livros",
+  "private": true,
+  "main": "main.js",
+  "author": {
+    "name": "Hebert Almeida"
+  },
+  "license": "GPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Hebert-Almeida/renovador-de-livros"
+  },
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux",
+    "build:all": "electron-builder -mwl"
+  },
+  "build": {
+    "appId": "com.renovador.livros",
+    "productName": "Renovador de Livros",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "build/icon.icns",
+      "category": "public.app-category.utilities"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "build/icon.png",
+      "category": "Utility"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer.js",
+      "index.html",
+      "styles.css",
+      "build/**/*"
+    ]
+  },
+  "devDependencies": {
+    "electron": "^40.0.0",
+    "electron-builder": "^26.5.0"
+  },
+  "dependencies": {
+    "playwright-core": "^1.49.0"
+  }
+}
