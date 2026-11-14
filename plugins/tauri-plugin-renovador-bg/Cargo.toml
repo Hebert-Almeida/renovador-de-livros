@@ -1,0 +1,17 @@
+[package]
+name = "tauri-plugin-renovador-bg"
+description = "Segundo plano no mobile: WorkManager (Android) e BGTask (iOS), chave do banco no Keystore/Keychain"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+links = "tauri-plugin-renovador-bg"
+
+[dependencies]
+tauri = "2"
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+
+[build-dependencies]
+tauri-plugin = { version = "2", features = ["build"] }

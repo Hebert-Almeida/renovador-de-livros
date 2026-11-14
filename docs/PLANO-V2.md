@@ -54,7 +54,7 @@ A versão 2.0 é um automatizador completo e multiplataforma:
 5. Identificadores em inglês. Textos da UI, documentação, commits e PRs em pt-BR, com Conventional Commits.
 6. Antes do PR, rode o que se aplicar: `cargo fmt --all --check`, `cargo clippy --workspace -- -D warnings`, `cargo test --workspace`, `npm run check`, `npm run test`, `npm run build`.
 7. Toda unidade de UI precisa de teste axe sem violações e de teste de navegação só por teclado. Animações passam por `src/lib/motion`, que respeita `prefers-reduced-motion`.
-8. Three.js só via `import()` dinâmico. Não adicione dependências além das declaradas na Onda 0 sem justificar no PR.
+8. Three.js só via `import(`C:\Strawberry\perl\bin`)` dinâmico. Não adicione dependências além das declaradas na Onda 0 sem justificar no PR.
 
 ## 4. Pré-requisitos manuais (antes da Onda 1)
 
@@ -299,6 +299,19 @@ Eventos: `cycle://progress`, `cycle://finished`, `automation://state`.
 - `npm run tauri android build --debug` compila (depois de P1).
 - `DESIGN.md` e `bindings.ts` estão commitados.
 
+### Notas da Onda 0 (leia antes das Ondas 1 e 2)
+
+Desvios e convenções descobertos ao montar a fundação:
+
+- **SvelteKit 3**: `$lib` foi removido. Use `#lib/...` (campo `imports` do `package.json`) **com extensão explícita**: `#lib/routes.ts`, `#lib/motion/index.ts`, `#lib/components/Button.svelte`.
+- **`Id` é `i32`** (não `i64`): o `specta-typescript` recusa `i64`. O `Store` converte os rowids do SQLite.
+- **Sem `rusqlite_migration`** (incompatível com rusqlite 0.42): o `Store` aplica `store::MIGRATIONS` via `PRAGMA user_version`.
+- **Bindings**: `cargo run -p renovador --bin export-bindings` regenera `src/lib/ipc/bindings.ts` (também roda no `tauri dev`). Testes de lib do `src-tauri` não rodam no Windows (STATUS_ENTRYPOINT_NOT_FOUND); teste os comandos via `renovador-core` ou binários.
+- **Parâmetros dos comandos** não podem ter prefixo `_`: o nome vira a chave do IPC.
+- **Eventos** no frontend: `cycleProgressEvent`, `cycleFinishedEvent`, `automationStateEvent` (equivalem a `cycle://progress`, `cycle://finished`, `automation://state`).
+- **Windows**: rode `vitest` num terminal cujo caminho comece com `C:\` maiúsculo; com `c:\` o Vitest carrega duas cópias e todo teste falha. O build do SQLCipher precisa do Strawberry Perl antes do perl do Git no `PATH` (`C:\Strawberry\perl\bin`).
+- **Plugin mobile**: só o crate Rust mínimo existe; os projetos `android/` e `ios/` são criados na W1-11 (`tauri plugin new` exige terminal interativo).
+
 ## 7. Onda 1 — `/batch` (11 unidades independentes)
 
 Todos os caminhos de `crates/...` abaixo são relativos a `crates/renovador-core/`.
@@ -399,7 +412,7 @@ Todos os caminhos de `crates/...` abaixo são relativos a `crates/renovador-core
 - Fazer:
   - **Kotlin**: chave AES-GCM no AndroidKeyStore, envolvendo a chave do banco; `RenewWorker` (CoroutineWorker) e a API de agendamento (periódico de 6 h + execução única no horário planejado); ponte JNI para `ffi::run_background_cycle`.
   - **Swift**: esqueleto de Keychain e de registro no `BGTaskScheduler`.
-  - Comandos do plugin: `schedule_next(at)` e `get_db_key()`.
+  - Comandos do plugin: `schedule_next(at)` e `get_db_key(`C:\Strawberry\perl\bin`)`.
 - Aceite: build Android de debug compila; testes JVM da lógica de agendamento.
 
 ## 8. Onda 2 — `/batch` (12 unidades)

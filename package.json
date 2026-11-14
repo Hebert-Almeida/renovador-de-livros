@@ -1,78 +1,58 @@
 {
-  "name": "renovador-livros",
-  "version": "1.0.0",
-  "description": "Aplicativo para renovação automática de livros",
+  "name": "renovador-de-livros",
+  "version": "2.0.0-alpha.0",
+  "description": "Renovação automática e responsável de empréstimos na Biblioteca Sophia (UFTM)",
   "private": true,
-  "main": "main.js",
+  "type": "module",
+  "license": "MIT OR Apache-2.0",
   "author": {
     "name": "Hebert Almeida"
   },
-  "license": "GPL-3.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/Hebert-Almeida/renovador-de-livros"
   },
   "scripts": {
-    "start": "electron .",
-    "build": "electron-builder",
-    "build:win": "electron-builder --win",
-    "build:mac": "electron-builder --mac",
-    "build:linux": "electron-builder --linux",
-    "build:all": "electron-builder -mwl"
-  },
-  "build": {
-    "appId": "com.renovador.livros",
-    "productName": "Renovador de Livros",
-    "directories": {
-      "output": "dist"
-    },
-    "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
-          "target": "portable",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "icon": "build/icon.png"
-    },
-    "mac": {
-      "target": [
-        "dmg",
-        "zip"
-      ],
-      "icon": "build/icon.icns",
-      "category": "public.app-category.utilities"
-    },
-    "linux": {
-      "target": [
-        "AppImage",
-        "deb"
-      ],
-      "icon": "build/icon.png",
-      "category": "Utility"
-    },
-    "files": [
-      "main.js",
-      "preload.js",
-      "renderer.js",
-      "index.html",
-      "styles.css",
-      "build/**/*"
-    ]
-  },
-  "devDependencies": {
-    "electron": "^40.0.0",
-    "electron-builder": "^26.5.0"
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "tauri": "tauri"
   },
   "dependencies": {
-    "playwright-core": "^1.49.0"
+    "@tauri-apps/api": "^2.12.4",
+    "@tauri-apps/plugin-autostart": "^2.7.0",
+    "@tauri-apps/plugin-dialog": "^2.8.4",
+    "@tauri-apps/plugin-fs": "^2.7.1",
+    "@tauri-apps/plugin-log": "^2.10.2",
+    "@tauri-apps/plugin-notification": "^2.8.1",
+    "@tauri-apps/plugin-opener": "^2.7.3",
+    "@tauri-apps/plugin-os": "^2.4.0",
+    "animejs": "^4.5.0",
+    "gsap": "^3.15.1",
+    "three": "^0.187.0"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "^1.65.1",
+    "@sveltejs/adapter-static": "^4.0.1",
+    "@sveltejs/kit": "^3.2.0",
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "@tauri-apps/cli": "^2.12.4",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/svelte": "^5.4.2",
+    "@types/node": "^26.6.6",
+    "@types/three": "^0.187.0",
+    "jsdom": "^31.0.1",
+    "svelte": "^5.57.3",
+    "svelte-check": "^4.7.8",
+    "typescript": "^6.0.3",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.0"
+  },
+  "imports": {
+    "#lib/*": "./src/lib/*"
   }
 }
