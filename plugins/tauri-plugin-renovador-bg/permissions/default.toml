@@ -1,0 +1,5 @@
+"$schema" = "schemas/schema.json"
+
+[default]
+description = "Permite agendar o próximo ciclo e ler a chave do banco."
+permissions = ["allow-schedule-next", "allow-get-db-key"]

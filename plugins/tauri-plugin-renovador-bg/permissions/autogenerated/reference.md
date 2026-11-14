@@ -1,3 +1,12 @@
+## Default Permission
+
+Permite agendar o próximo ciclo e ler a chave do banco.
+
+#### This default permission set includes the following:
+
+- `allow-schedule-next`
+- `allow-get-db-key`
+
 ## Permission Table
 
 <table>

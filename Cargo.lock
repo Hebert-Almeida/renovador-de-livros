@@ -5166,10 +5166,14 @@ dependencies = [
 name = "tauri-plugin-renovador-bg"
 version = "2.0.0-alpha.0"
 dependencies = [
+ "jni 0.21.1",
+ "renovador-core",
  "serde",
+ "serde_json",
  "tauri",
  "tauri-plugin",
  "thiserror 2.0.21",
+ "zeroize",
 ]
 
 [[package]]
