@@ -1,15 +1,22 @@
 //! Portão anti-abuso: toda requisição ao Sophia passa por [`RequestGate`].
 //! Implementação na W1-01. Contratos (traits e tipos) congelados na Onda 0.
 
+mod gate;
 pub mod limits;
+pub mod memory;
+pub mod policy;
 
-use std::sync::Arc;
+pub use gate::{
+    DefaultGate, LOGIN_KIND, Sleeper, TokioSleeper, account_scope, check_account_count, host_scope,
+    is_sophia_powered_by, session_kind, session_trigger, validate_library_url,
+};
+pub use memory::MemoryGuardPersistence;
+pub use policy::{EffectiveLimits, policy_fetch_due};
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::clock::Clock;
 use crate::model::{Id, QuotaStatus, Trigger};
 
 #[derive(Debug, Clone, thiserror::Error, Serialize, Deserialize, specta::Type)]
@@ -108,6 +115,10 @@ pub struct RemotePolicy {
 pub struct Permit {
     pub session_id: String,
     pub request_index: u32,
+    pub(crate) account_id: Id,
+    pub(crate) host: String,
+    pub(crate) kind: String,
+    pub(crate) _slot: Option<tokio::sync::OwnedSemaphorePermit>,
 }
 
 /// Sessão aberta no gate (login → logout de uma conta).
@@ -141,49 +152,4 @@ pub trait RequestGate: Send + Sync {
     );
     fn end_session(&self, ticket: SessionTicket);
     fn quota(&self, account_id: Id) -> crate::Result<QuotaStatus>;
-}
-
-/// Implementação padrão (W1-01).
-pub struct DefaultGate {
-    pub persistence: Arc<dyn GuardPersistence>,
-    pub clock: Arc<dyn Clock>,
-    pub policy: RemotePolicy,
-}
-
-impl DefaultGate {
-    pub fn new(persistence: Arc<dyn GuardPersistence>, clock: Arc<dyn Clock>) -> Self {
-        Self {
-            persistence,
-            clock,
-            policy: RemotePolicy::default(),
-        }
-    }
-}
-
-#[async_trait]
-impl RequestGate for DefaultGate {
-    async fn begin_session(
-        &self,
-        _account_id: Id,
-        _host: &str,
-        _trigger: Trigger,
-    ) -> Result<SessionTicket, GuardError> {
-        // Stub seguro: enquanto não implementado, nada passa.
-        Err(GuardError::RemoteDisabled)
-    }
-    async fn acquire(&self, _ticket: &SessionTicket, _kind: &str) -> Result<Permit, GuardError> {
-        Err(GuardError::RemoteDisabled)
-    }
-    fn report(
-        &self,
-        _permit: Permit,
-        _http_status: Option<u16>,
-        _outcome: RequestOutcome,
-        _retry_after: Option<std::time::Duration>,
-    ) {
-    }
-    fn end_session(&self, _ticket: SessionTicket) {}
-    fn quota(&self, _account_id: Id) -> crate::Result<QuotaStatus> {
-        Err(crate::Error::todo("guard::quota"))
-    }
 }
