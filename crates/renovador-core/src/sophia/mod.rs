@@ -1,5 +1,7 @@
 //! Motor HTTP do Sophia (seção 5.1). Cliente na W1-05, parser na W1-06.
 
+pub mod client;
+pub mod detect;
 pub mod model;
 pub mod parser;
 pub mod selectors;
