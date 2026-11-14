@@ -88,11 +88,9 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-      - uses: android-actions/setup-android@v3
+      # O runner ubuntu já traz Android SDK e NDK pré-instalados.
       - name: NDK
-        run: |
-          sdkmanager --install "ndk;27.2.12479018"
-          echo "NDK_HOME=$ANDROID_SDK_ROOT/ndk/27.2.12479018" >> "$GITHUB_ENV"
+        run: echo "NDK_HOME=$ANDROID_NDK_LATEST_HOME" >> "$GITHUB_ENV"
       - name: Toolchain Rust (targets Android)
         run: rustup show
       - uses: Swatinem/rust-cache@v2

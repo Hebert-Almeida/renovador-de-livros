@@ -5,6 +5,8 @@ all-features = true
 [advisories]
 version = 2
 yanked = "warn"
+# Só avisos "unmaintained" de dependências diretas falham (transitivas do Tauri/zbus fogem do nosso controle).
+unmaintained = "workspace"
 
 [licenses]
 version = 2
@@ -27,6 +29,11 @@ allow = [
   "CDLA-Permissive-2.0",
   "OpenSSL",
 ]
+
+# SQLCipher vendorizado: SQLite (blessing, domínio público) e trechos WTFPL; ambas permissivas.
+[[licenses.exceptions]]
+crate = "sqlcipher-src"
+allow = ["blessing", "WTFPL"]
 
 [bans]
 multiple-versions = "allow"
