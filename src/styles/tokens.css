@@ -1,39 +1,177 @@
-/* Tokens provisórios (Onda 0). Valores definitivos virão do DESIGN.md (W1-07). */
+/*
+ * Tokens do design system (W1-07) — "ficha de empréstimo", neo-brutalismo editorial.
+ * PROVISÓRIO: o DESIGN.md ainda não existe; os valores seguem o briefing da seção 5.7
+ * do PLANO-V2 e estão TODOS concentrados aqui para ajuste posterior.
+ * Componentes só consomem var(--*); nada de cor/medida literal fora deste arquivo.
+ */
 :root {
+	color-scheme: light;
+	/* Cores — tema claro (papel off-white, tinta preta) */
 	--color-paper: #f6f1e7;
+	--color-paper-raised: #fffdf8;
+	--color-paper-sunken: #ebe3d3;
 	--color-ink: #111111;
-	--color-accent: #c2410c;
+	--color-ink-muted: #4a443a;
+	--color-rule: #111111;
+	--color-accent: #b3360b;
+	--color-accent-ink: #ffffff;
 	--color-focus: #1d4ed8;
+	--color-stamp: #9f1d1d;
+	--color-ok: #1f6b35;
+	--color-warn: #8a5a00;
+	--color-danger: #a51d1d;
+	--color-info: #1d4b8f;
+	--color-ok-bg: #dcefdc;
+	--color-warn-bg: #f7e7c2;
+	--color-danger-bg: #f6d6d2;
+	--color-info-bg: #d9e4f5;
+	--color-backdrop: rgb(17 17 17 / 0.55);
+	--color-skeleton: #ddd3c0;
+	--color-skeleton-shine: #ede6d8;
+	--spine-1: #2f4858;
+	--spine-2: #7a2e2e;
+	--spine-3: #3d5a3a;
+	--spine-4: #6b4c1e;
+	--spine-5: #4b3a6b;
+	--spine-ink: #fffdf8;
+
+	/* Bordas, sombras, raios */
 	--border-width: 3px;
-	--shadow-hard: 4px 4px 0 var(--color-ink);
+	--border-width-thin: 2px;
+	--border: var(--border-width) solid var(--color-rule);
+	--shadow-offset: 0.25rem;
+	--shadow-hard: var(--shadow-offset) var(--shadow-offset) 0 var(--color-rule);
+	--shadow-hard-lg: 0.5rem 0.5rem 0 var(--color-rule);
+	--shadow-pressed: 0.0625rem 0.0625rem 0 var(--color-rule);
 	--radius: 0;
+	--radius-pill: 999rem;
+
+	/* Espaço */
 	--space-1: 0.25rem;
 	--space-2: 0.5rem;
 	--space-3: 1rem;
 	--space-4: 1.5rem;
 	--space-5: 2.5rem;
-	--font-display: system-ui, sans-serif;
-	--font-body: Georgia, serif;
-	--font-mono: ui-monospace, monospace;
-	--target-min: 44px;
+	--space-6: 4rem;
+
+	/* Tipografia — fontes OFL embutidas ainda não estão no package.json;
+	   pilhas de sistema até o DESIGN.md escolher (grotesca / serifa de livro / mono). */
+	--font-display: 'Archivo', 'Helvetica Neue', Arial, system-ui, sans-serif;
+	--font-body: 'Literata', Charter, 'Iowan Old Style', Georgia, serif;
+	--font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+	--text-xs: 0.8125rem;
+	--text-sm: 0.9375rem;
+	--text-md: 1rem;
+	--text-lg: 1.25rem;
+	--text-xl: 1.75rem;
+	--text-2xl: 2.5rem;
+	--weight-bold: 800;
+	--tracking-caps: 0.08em;
+
+	/* Acessibilidade */
+	--target-min: 2.75rem; /* 44px */
+	--focus-width: 0.25rem;
+	--focus-offset: 0.1875rem;
+	--focus-ring: var(--focus-width) solid var(--color-focus);
+
+	/* Layout */
+	--content-max: 72rem;
+	--sidebar-width: 15rem;
+	--grid-line: rgb(17 17 17 / 0.06);
+	--grid-size: 1.5rem;
+
+	/* Movimento (segundos, consumidos por lib/motion também) */
+	--duration-fast: 120ms;
+	--duration-base: 240ms;
+	--duration-slow: 480ms;
+	--ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
+
+/* Tema escuro: "papel carbono" */
 @media (prefers-color-scheme: dark) {
-	:root:not([data-theme='light']) {
+	:root:not([data-theme='light']):not([data-theme='contrast']) {
+		color-scheme: dark;
 		--color-paper: #17150f;
+		--color-paper-raised: #221f17;
+		--color-paper-sunken: #0f0e0a;
 		--color-ink: #f4efe4;
-		--color-accent: #fb923c;
+		--color-ink-muted: #c4bba9;
+		--color-rule: #f4efe4;
+		--color-accent: #ff9a5c;
+		--color-accent-ink: #17150f;
 		--color-focus: #93c5fd;
+		--color-stamp: #ff8a8a;
+		--color-ok: #8fd6a0;
+		--color-warn: #f3c969;
+		--color-danger: #ff9b9b;
+		--color-info: #9cc2ff;
+		--color-ok-bg: #16301d;
+		--color-warn-bg: #3a2d0c;
+		--color-danger-bg: #3d1717;
+		--color-info-bg: #142540;
+		--color-backdrop: rgb(0 0 0 / 0.7);
+		--color-skeleton: #2e2a20;
+		--color-skeleton-shine: #3b362a;
+		--grid-line: rgb(244 239 228 / 0.05);
 	}
 }
 :root[data-theme='dark'] {
+	color-scheme: dark;
 	--color-paper: #17150f;
+	--color-paper-raised: #221f17;
+	--color-paper-sunken: #0f0e0a;
 	--color-ink: #f4efe4;
-	--color-accent: #fb923c;
+	--color-ink-muted: #c4bba9;
+	--color-rule: #f4efe4;
+	--color-accent: #ff9a5c;
+	--color-accent-ink: #17150f;
 	--color-focus: #93c5fd;
+	--color-stamp: #ff8a8a;
+	--color-ok: #8fd6a0;
+	--color-warn: #f3c969;
+	--color-danger: #ff9b9b;
+	--color-info: #9cc2ff;
+	--color-ok-bg: #16301d;
+	--color-warn-bg: #3a2d0c;
+	--color-danger-bg: #3d1717;
+	--color-info-bg: #142540;
+	--color-backdrop: rgb(0 0 0 / 0.7);
+	--color-skeleton: #2e2a20;
+	--color-skeleton-shine: #3b362a;
+	--grid-line: rgb(244 239 228 / 0.05);
 }
+
+/* Alto contraste */
 :root[data-theme='contrast'] {
+	color-scheme: dark;
 	--color-paper: #000000;
+	--color-paper-raised: #000000;
+	--color-paper-sunken: #000000;
 	--color-ink: #ffffff;
+	--color-ink-muted: #ffffff;
+	--color-rule: #ffffff;
 	--color-accent: #ffff00;
+	--color-accent-ink: #000000;
 	--color-focus: #00ffff;
+	--color-stamp: #ffff00;
+	--color-ok: #00ff66;
+	--color-warn: #ffff00;
+	--color-danger: #ff6b6b;
+	--color-info: #00ffff;
+	--color-ok-bg: #000000;
+	--color-warn-bg: #000000;
+	--color-danger-bg: #000000;
+	--color-info-bg: #000000;
+	--color-backdrop: rgb(0 0 0 / 0.85);
+	--color-skeleton: #333333;
+	--color-skeleton-shine: #555555;
+	--spine-1: #000000;
+	--spine-2: #000000;
+	--spine-3: #000000;
+	--spine-4: #000000;
+	--spine-5: #000000;
+	--spine-ink: #ffffff;
+	--grid-line: transparent;
+	--border-width: 3px;
+	--focus-width: 0.3125rem;
 }
