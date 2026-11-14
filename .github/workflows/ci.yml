@@ -1,0 +1,127 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    name: check (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Dependências do Tauri (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev \
+            librsvg2-dev libssl-dev libxdo-dev build-essential curl wget file pkg-config
+
+      # O SQLCipher vendorizado (OpenSSL) precisa do Strawberry Perl antes do perl do Git.
+      - name: Strawberry Perl no PATH (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: echo "C:\Strawberry\perl\bin" >> "$GITHUB_PATH"
+
+      # rust-toolchain.toml define canal, componentes e targets.
+      - name: Toolchain Rust
+        run: rustup show
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: cargo fmt
+        run: cargo fmt --all -- --check
+
+      # O build do src-tauri exige ../build (frontendDist).
+      - name: npm run build
+        run: npm run build
+
+      - name: cargo clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      # Testes de lib do src-tauri falham no Windows (STATUS_ENTRYPOINT_NOT_FOUND).
+      - name: cargo test (Windows)
+        if: runner.os == 'Windows'
+        run: cargo test -p renovador-core
+      - name: cargo test
+        if: runner.os != 'Windows'
+        run: cargo test --workspace
+
+      - name: npm run check
+        run: npm run check
+
+      - name: vitest
+        run: npm test
+
+  android:
+    name: android debug
+    runs-on: ubuntu-24.04
+    # Projeto Android ainda não existe (criado na W1-11). Remover quando existir.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: android-actions/setup-android@v3
+      - name: NDK
+        run: |
+          sdkmanager --install "ndk;27.2.12479018"
+          echo "NDK_HOME=$ANDROID_SDK_ROOT/ndk/27.2.12479018" >> "$GITHUB_ENV"
+      - name: Toolchain Rust (targets Android)
+        run: rustup show
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Build Android debug
+        run: npx tauri android build --debug --apk
+
+  deny:
+    name: cargo-deny
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check licenses bans sources advisories
+
+  npm-audit:
+    name: npm audit
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Só dependências de produção, falhando a partir de "high".
+      # Licenças npm: GSAP usa a "Standard No Charge License" (não OSI) — exceção aceita,
+      # documentada em docs/PLANO-V2.md; por isso não há checagem automática de licença no npm.
+      - run: npm audit --omit=dev --audit-level=high
