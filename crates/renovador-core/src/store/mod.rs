@@ -867,9 +867,12 @@ impl Store {
                 "o backup não pode sobrescrever o banco".into(),
             ));
         }
-        remove_if_exists(path)?;
+        let mut tmp = path.as_os_str().to_owned();
+        tmp.push(".tmp");
+        let tmp = std::path::PathBuf::from(tmp);
+        remove_if_exists(&tmp)?;
         let conn = self.conn();
-        attach(&conn, path, passphrase)?;
+        attach(&conn, &tmp, passphrase)?;
         let res = conn
             .query_row("SELECT sqlcipher_export('bk')", [], |_| Ok(()))
             .db()
@@ -878,7 +881,14 @@ impl Store {
                     .db()
             });
         let det = conn.execute_batch("DETACH DATABASE bk").db();
-        res.and(det)
+        let res = res.and(det).and_then(|()| {
+            std::fs::rename(&tmp, path)
+                .map_err(|e| Error::Store(format!("{}: {e}", path.display())))
+        });
+        if res.is_err() {
+            let _ = std::fs::remove_file(&tmp);
+        }
+        res
     }
 
     /// Substitui todo o conteúdo pelo do backup. Senha errada falha sem alterar nada.
