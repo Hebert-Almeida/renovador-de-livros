@@ -32,6 +32,14 @@ impl ReqwestTransport {
         headers.insert(ACCEPT_LANGUAGE, HeaderValue::from_static("pt-BR"));
         let http = reqwest::Client::builder()
             .cookie_store(true)
+            .redirect(reqwest::redirect::Policy::custom(|attempt| {
+                let origin = attempt.previous().first().and_then(|u| u.host_str());
+                if attempt.previous().len() >= 10 || attempt.url().host_str() != origin {
+                    attempt.stop()
+                } else {
+                    attempt.follow()
+                }
+            }))
             .gzip(true)
             .timeout(REQUEST_TIMEOUT)
             .user_agent(user_agent())
