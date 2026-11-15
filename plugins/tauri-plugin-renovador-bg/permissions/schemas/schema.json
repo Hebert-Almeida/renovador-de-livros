@@ -317,6 +317,12 @@
           "type": "string",
           "const": "deny-schedule-next",
           "markdownDescription": "Denies the schedule_next command without any pre-configured scope."
+        },
+        {
+          "description": "Permite agendar o próximo ciclo e ler a chave do banco.\n#### This default permission set includes:\n\n- `allow-schedule-next`\n- `allow-get-db-key`",
+          "type": "string",
+          "const": "default",
+          "markdownDescription": "Permite agendar o próximo ciclo e ler a chave do banco.\n#### This default permission set includes:\n\n- `allow-schedule-next`\n- `allow-get-db-key`"
         }
       ]
     }
