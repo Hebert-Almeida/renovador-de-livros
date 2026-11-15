@@ -3,7 +3,7 @@ package app.renovador.bg
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
-import android.util.Base64
+import java.io.File
 import java.security.KeyStore
 import java.security.SecureRandom
 import javax.crypto.Cipher
@@ -16,18 +16,22 @@ import javax.crypto.spec.GCMParameterSpec
  * AES-256-GCM que nunca sai do AndroidKeyStore.
  */
 class KeyVault(context: Context) {
-    private val prefs = context.applicationContext
-        .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    // Fora do backup do Android: a chave do AndroidKeyStore não é restaurada em outro aparelho.
+    private val file = File(context.applicationContext.noBackupFilesDir, BLOB_FILE)
 
     /** Devolve a chave do banco, criando-a na primeira chamada. O chamador deve zerar o array. */
     fun getOrCreateDbKey(): ByteArray = synchronized(LOCK) {
-        prefs.getString(PREF_WRAPPED, null)?.let { stored ->
-            return unwrap(Base64.decode(stored, Base64.NO_WRAP))
+        if (file.exists()) {
+            return unwrap(file.readBytes())
         }
         val dbKey = ByteArray(KeyWrapFormat.DB_KEY_LENGTH).also { SecureRandom().nextBytes(it) }
-        val blob = wrap(dbKey)
-        check(prefs.edit().putString(PREF_WRAPPED, Base64.encodeToString(blob, Base64.NO_WRAP)).commit()) {
-            "falha ao gravar a chave envolvida"
+        try {
+            val tmp = File(file.parentFile, "$BLOB_FILE.tmp")
+            tmp.writeBytes(wrap(dbKey))
+            check(tmp.renameTo(file)) { "falha ao gravar a chave envolvida" }
+        } catch (e: Exception) {
+            dbKey.fill(0)
+            throw e
         }
         dbKey
     }
@@ -66,7 +70,6 @@ class KeyVault(context: Context) {
         private const val ANDROID_KEYSTORE = "AndroidKeyStore"
         private const val ALIAS = "renovador_db_wrap_v1"
         private const val TRANSFORMATION = "AES/GCM/NoPadding"
-        private const val PREFS = "renovador_bg"
-        private const val PREF_WRAPPED = "db_key_wrapped"
+        private const val BLOB_FILE = "db_key_wrapped.bin"
     }
 }
