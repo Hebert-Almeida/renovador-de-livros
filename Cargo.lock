@@ -3881,6 +3881,7 @@ dependencies = [
  "ed25519-dalek",
  "keyring",
  "rand",
+ "renovador-core",
  "reqwest",
  "rusqlite",
  "scraper",
