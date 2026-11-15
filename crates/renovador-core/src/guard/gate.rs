@@ -421,6 +421,7 @@ impl RequestGate for DefaultGate {
         let index = {
             let mut state = self.state.lock().unwrap();
             let index = check(&state)?;
+            self.check_breakers(ticket.account_id, &ticket.host)?;
             let now = self.now();
             state.next_request_at = Some(now + to_chrono(limits.min_request_interval + jitter()));
             state
@@ -430,7 +431,6 @@ impl RequestGate for DefaultGate {
                 .requests += 1;
             index
         };
-        self.check_breakers(ticket.account_id, &ticket.host)?;
 
         Ok(Permit {
             session_id: ticket.session_id.clone(),
