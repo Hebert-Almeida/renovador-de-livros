@@ -33,7 +33,11 @@ zeroize = { version = "1.9.1", features = ["derive"] }
 [target.'cfg(not(target_os = "android"))'.dependencies]
 keyring = "4.2.0"
 
+[features]
+test-util = []
+
 [dev-dependencies]
+renovador-core = { path = ".", features = ["test-util"] }
 tempfile = "3.27.0"
 tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "time"] }
 wiremock = "0.6.5"

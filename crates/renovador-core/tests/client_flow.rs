@@ -47,10 +47,7 @@ impl RequestGate for FakeGate {
         }
         let mut a = self.acquired.lock().unwrap();
         a.push(kind.into());
-        Ok(Permit {
-            session_id: ticket.session_id.clone(),
-            request_index: a.len() as u32,
-        })
+        Ok(Permit::for_tests(ticket.session_id.clone(), a.len() as u32))
     }
     fn report(&self, _p: Permit, s: Option<u16>, o: RequestOutcome, r: Option<Duration>) {
         self.reports.lock().unwrap().push((s, o, r));

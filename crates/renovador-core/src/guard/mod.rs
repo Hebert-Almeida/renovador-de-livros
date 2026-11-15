@@ -121,6 +121,21 @@ pub struct Permit {
     pub(crate) _slot: Option<tokio::sync::OwnedSemaphorePermit>,
 }
 
+#[cfg(feature = "test-util")]
+impl Permit {
+    /// Permissão avulsa para gates falsos em testes.
+    pub fn for_tests(session_id: String, request_index: u32) -> Self {
+        Self {
+            session_id,
+            request_index,
+            account_id: 0,
+            host: String::new(),
+            kind: String::new(),
+            _slot: None,
+        }
+    }
+}
+
 /// Sessão aberta no gate (login → logout de uma conta).
 #[derive(Debug, Clone)]
 pub struct SessionTicket {
