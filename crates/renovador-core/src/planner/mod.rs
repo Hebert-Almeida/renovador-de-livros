@@ -98,11 +98,13 @@ pub fn plan(input: &PlanInput<'_>) -> Result<Plan> {
         }
         if acc.mode == AccountMode::Auto && loan.auto_renew {
             let date = renewal_date(loan.due_date, acc.renew_days_before).max(today);
-            wanted.push((
-                ScheduleKind::Renew,
-                id,
-                catch_up(at_minute(date, minute), now),
-            ));
+            let at = catch_up(at_minute(date, minute), now);
+            if local_date(at) > loan.due_date {
+                // A janela de hoje já fechou e amanhã o livro estará vencido.
+                wanted.push((ScheduleKind::Remind, id, next_in_window(now)));
+            } else {
+                wanted.push((ScheduleKind::Renew, id, at));
+            }
         } else {
             for at in reminder_times(loan.due_date, minute, now) {
                 wanted.push((ScheduleKind::Remind, id, at));

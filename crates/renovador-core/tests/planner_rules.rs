@@ -481,3 +481,12 @@ fn foreign_schedule_is_rejected() {
     });
     assert!(r.is_err());
 }
+
+#[test]
+fn due_today_after_window_becomes_reminder() {
+    let acc = account(AccountMode::Auto, AccountStatus::Active);
+    let now = local(2026, 6, 16, 22, 0);
+    let p = run(now, &acc, &[loan(10, d(2026, 6, 16), true)], &[]);
+    assert!(of_kind(&p, ScheduleKind::Renew).is_empty());
+    assert_eq!(of_kind(&p, ScheduleKind::Remind).len(), 1);
+}
