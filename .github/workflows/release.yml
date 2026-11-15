@@ -1,0 +1,58 @@
+name: Release
+
+# Só disparo manual. O environment `publicacao` deve ter revisores obrigatórios
+# configurados no GitHub (gate jurídico) antes de qualquer publicação.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: release (${{ matrix.platform }})
+    environment: publicacao
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ubuntu-24.04
+            args: ""
+          - platform: windows-latest
+            args: ""
+          - platform: macos-latest
+            args: "--target universal-apple-darwin"
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dependências do Tauri (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev \
+            librsvg2-dev libssl-dev libxdo-dev patchelf
+      - name: Strawberry Perl no PATH (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: echo "C:\Strawberry\perl\bin" >> "$GITHUB_PATH"
+      - name: Toolchain Rust
+        run: rustup show
+      - name: Targets macOS
+        if: runner.os == 'macOS'
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v__VERSION__
+          releaseName: Renovador de Livros v__VERSION__
+          releaseBody: Release em rascunho — revisar antes de publicar.
+          releaseDraft: true
+          prerelease: true
+          args: ${{ matrix.args }}
