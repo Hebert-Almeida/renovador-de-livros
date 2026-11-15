@@ -1,16 +1,36 @@
-#![allow(unused_variables)]
 //! Comandos IPC (seção 5.5). **Assinaturas congeladas na Onda 0.**
 //! Corpos implementados na W2-02. `bindings.ts` é gerado a partir daqui.
+//! A lógica fica em `state.rs` (sem Tauri, testável); aqui só se delega.
+
+use std::sync::{Arc, OnceLock};
 
 use chrono::{DateTime, Utc};
+use renovador_core::Result;
 use renovador_core::model::*;
-use renovador_core::{Error, Result};
-use tauri::State;
+use tauri::{AppHandle, Manager, State};
+use tauri_specta::Event as _;
 
-use crate::state::AppState;
+use crate::events::{CycleFinishedEvent, CycleProgressEvent};
+use crate::state::{AppConfig, AppState};
 
-fn todo<T>(what: &str) -> Result<T> {
-    Err(Error::todo(what))
+/// Handle do app, para emitir eventos a partir dos comandos.
+static APP: OnceLock<AppHandle> = OnceLock::new();
+
+/// Abre o banco e liga o progresso dos ciclos ao evento `cycle://progress`.
+/// Chamado no `setup` do app. Falhar ao abrir o banco não derruba o app: os
+/// comandos devolvem erro de banco.
+pub fn setup(app: &tauri::App) -> std::result::Result<(), Box<dyn std::error::Error>> {
+    let handle = app.handle().clone();
+    let _ = APP.set(handle.clone());
+    let state = app.state::<AppState>();
+    state.set_progress_sink(Arc::new(move |p| {
+        let _ = CycleProgressEvent(p).emit(&handle);
+    }));
+    let data_dir = app.path().app_data_dir()?;
+    if let Err(e) = AppConfig::production(data_dir).and_then(|c| state.init(c)) {
+        tracing::error!("não foi possível abrir o banco: {e}");
+    }
+    Ok(())
 }
 
 // --- Geral ---
@@ -18,7 +38,7 @@ fn todo<T>(what: &str) -> Result<T> {
 #[tauri::command]
 #[specta::specta]
 pub async fn app_status(state: State<'_, AppState>) -> Result<AppStatus> {
-    todo("app_status")
+    state.app_status()
 }
 
 #[tauri::command]
@@ -33,7 +53,7 @@ pub async fn library_validate(
     state: State<'_, AppState>,
     url: String,
 ) -> Result<LibraryValidation> {
-    todo("library_validate")
+    state.library_validate(&url).await
 }
 
 // --- Contas ---
@@ -41,13 +61,13 @@ pub async fn library_validate(
 #[tauri::command]
 #[specta::specta]
 pub async fn account_list(state: State<'_, AppState>) -> Result<Vec<Account>> {
-    todo("account_list")
+    state.account_list()
 }
 
 #[tauri::command]
 #[specta::specta]
 pub async fn account_create(state: State<'_, AppState>, account: NewAccount) -> Result<Account> {
-    todo("account_create")
+    state.account_create(account)
 }
 
 #[tauri::command]
@@ -57,20 +77,20 @@ pub async fn account_update(
     id: Id,
     patch: AccountPatch,
 ) -> Result<Account> {
-    todo("account_update")
+    state.account_update(id, patch)
 }
 
 #[tauri::command]
 #[specta::specta]
 pub async fn account_delete(state: State<'_, AppState>, id: Id) -> Result<()> {
-    todo("account_delete")
+    state.account_delete(id)
 }
 
 /// Testa o login (conta na cota).
 #[tauri::command]
 #[specta::specta]
 pub async fn account_test_login(state: State<'_, AppState>, id: Id) -> Result<bool> {
-    todo("account_test_login")
+    state.account_test_login(id).await
 }
 
 // --- Empréstimos ---
@@ -78,25 +98,25 @@ pub async fn account_test_login(state: State<'_, AppState>, id: Id) -> Result<bo
 #[tauri::command]
 #[specta::specta]
 pub async fn loan_list(state: State<'_, AppState>, filter: LoanFilter) -> Result<Vec<LoanView>> {
-    todo("loan_list")
+    state.loan_list(&filter)
 }
 
 #[tauri::command]
 #[specta::specta]
 pub async fn loan_get(state: State<'_, AppState>, id: Id) -> Result<LoanDetail> {
-    todo("loan_get")
+    state.loan_get(id)
 }
 
 #[tauri::command]
 #[specta::specta]
 pub async fn loan_set_auto_renew(state: State<'_, AppState>, id: Id, on: bool) -> Result<()> {
-    todo("loan_set_auto_renew")
+    state.loan_set_auto_renew(id, on)
 }
 
 #[tauri::command]
 #[specta::specta]
 pub async fn loan_mark_returned(state: State<'_, AppState>, id: Id) -> Result<()> {
-    todo("loan_mark_returned")
+    state.loan_mark_returned(id)
 }
 
 // --- Execução e cota ---
@@ -108,13 +128,17 @@ pub async fn cycle_run_now(
     account_id: Id,
     kind: CycleKind,
 ) -> Result<CycleReport> {
-    todo("cycle_run_now")
+    let report = state.cycle_run_now(account_id, kind).await?;
+    if let Some(app) = APP.get() {
+        let _ = CycleFinishedEvent(report.clone()).emit(app);
+    }
+    Ok(report)
 }
 
 #[tauri::command]
 #[specta::specta]
 pub async fn quota_status(state: State<'_, AppState>, account_id: Id) -> Result<QuotaStatus> {
-    todo("quota_status")
+    state.quota_status(account_id)
 }
 
 // --- Agenda ---
@@ -125,25 +149,25 @@ pub async fn schedule_list(
     state: State<'_, AppState>,
     filter: ScheduleFilter,
 ) -> Result<Vec<Schedule>> {
-    todo("schedule_list")
+    state.schedule_list(&filter)
 }
 
 #[tauri::command]
 #[specta::specta]
 pub async fn schedule_cancel(state: State<'_, AppState>, id: Id) -> Result<Schedule> {
-    todo("schedule_cancel")
+    state.schedule_cancel(id)
 }
 
 #[tauri::command]
 #[specta::specta]
 pub async fn schedule_pause(state: State<'_, AppState>, id: Id) -> Result<Schedule> {
-    todo("schedule_pause")
+    state.schedule_pause(id)
 }
 
 #[tauri::command]
 #[specta::specta]
 pub async fn schedule_reactivate(state: State<'_, AppState>, id: Id) -> Result<Schedule> {
-    todo("schedule_reactivate")
+    state.schedule_reactivate(id)
 }
 
 /// Reagenda dentro da janela permitida.
@@ -154,7 +178,7 @@ pub async fn schedule_reschedule(
     id: Id,
     run_at: DateTime<Utc>,
 ) -> Result<Schedule> {
-    todo("schedule_reschedule")
+    state.schedule_reschedule(id, run_at)
 }
 
 // --- Histórico ---
@@ -166,9 +190,10 @@ pub async fn history_list(
     filter: HistoryFilter,
     page: Page,
 ) -> Result<HistoryPage> {
-    todo("history_list")
+    state.history_list(&filter, page)
 }
 
+/// `path` vem do diálogo de arquivo (`@tauri-apps/plugin-dialog`) no frontend.
 #[tauri::command]
 #[specta::specta]
 pub async fn history_export(
@@ -176,7 +201,7 @@ pub async fn history_export(
     format: ExportFormat,
     path: String,
 ) -> Result<u32> {
-    todo("history_export")
+    state.history_export(format, &path)
 }
 
 #[tauri::command]
@@ -185,7 +210,7 @@ pub async fn history_clear(
     state: State<'_, AppState>,
     before: Option<DateTime<Utc>>,
 ) -> Result<u32> {
-    todo("history_clear")
+    state.history_clear(before)
 }
 
 // --- Estatísticas ---
@@ -193,7 +218,7 @@ pub async fn history_clear(
 #[tauri::command]
 #[specta::specta]
 pub async fn stats_overview(state: State<'_, AppState>, range: DateRange) -> Result<StatsOverview> {
-    todo("stats_overview")
+    state.stats_overview(range)
 }
 
 #[tauri::command]
@@ -202,7 +227,7 @@ pub async fn stats_monthly(
     state: State<'_, AppState>,
     range: DateRange,
 ) -> Result<Vec<MonthlyStat>> {
-    todo("stats_monthly")
+    state.stats_monthly(range)
 }
 
 // --- Ajustes e dados ---
@@ -210,13 +235,13 @@ pub async fn stats_monthly(
 #[tauri::command]
 #[specta::specta]
 pub async fn settings_get(state: State<'_, AppState>) -> Result<Settings> {
-    todo("settings_get")
+    state.settings_get()
 }
 
 #[tauri::command]
 #[specta::specta]
 pub async fn settings_set(state: State<'_, AppState>, patch: SettingsPatch) -> Result<Settings> {
-    todo("settings_set")
+    state.settings_set(&patch)
 }
 
 #[tauri::command]
@@ -226,7 +251,7 @@ pub async fn backup_create(
     path: String,
     passphrase: String,
 ) -> Result<()> {
-    todo("backup_create")
+    state.backup_create(&path, &passphrase)
 }
 
 #[tauri::command]
@@ -236,13 +261,13 @@ pub async fn backup_restore(
     path: String,
     passphrase: String,
 ) -> Result<()> {
-    todo("backup_restore")
+    state.backup_restore(&path, &passphrase)
 }
 
 #[tauri::command]
 #[specta::specta]
 pub async fn data_wipe(state: State<'_, AppState>) -> Result<()> {
-    todo("data_wipe")
+    state.data_wipe()
 }
 
 // --- Diagnóstico ---
@@ -253,5 +278,5 @@ pub async fn diagnostics_requests(
     state: State<'_, AppState>,
     limit: u32,
 ) -> Result<Vec<RequestLogEntry>> {
-    todo("diagnostics_requests")
+    state.diagnostics_requests(limit)
 }
