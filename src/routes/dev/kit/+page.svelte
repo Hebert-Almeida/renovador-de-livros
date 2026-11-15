@@ -40,12 +40,19 @@
 	];
 
 	onMount(() => {
+		if (matchMedia('(prefers-color-scheme: dark)').matches) theme = 'dark';
 		const q = new URLSearchParams(location.search).get('tema');
 		if (q && themes.some((t) => t.value === q)) theme = q;
 		if (sections) reveal([...sections.querySelectorAll('.kit-section')]);
 	});
 	$effect(() => {
-		document.documentElement.dataset.theme = theme;
+		const root = document.documentElement;
+		const previous = root.dataset.theme;
+		root.dataset.theme = theme;
+		return () => {
+			if (previous === undefined) delete root.dataset.theme;
+			else root.dataset.theme = previous;
+		};
 	});
 </script>
 

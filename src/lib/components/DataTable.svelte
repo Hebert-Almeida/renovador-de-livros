@@ -27,6 +27,7 @@
 		return [...rows].sort((a, b) => {
 			const x = a[k];
 			const y = b[k];
+			if (x == null || y == null) return x == null ? (y == null ? 0 : 1) : -1;
 			if (typeof x === 'number' && typeof y === 'number') return (x - y) * dir;
 			return String(x).localeCompare(String(y), 'pt-BR') * dir;
 		});
