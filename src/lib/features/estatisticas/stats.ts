@@ -5,22 +5,35 @@ export type PeriodKey = '6m' | '12m' | 'all';
 const pad = (n: number) => String(n).padStart(2, '0');
 export const isoDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
-/** Intervalo inclusivo (YYYY-MM-DD) para o período, começando no 1º dia do mês. */
+/**
+ * Intervalo inclusivo (YYYY-MM-DD) para o período, começando no 1º dia do mês local.
+ * O banco grava `attempted_at` em UTC e compara as datas como texto, então o fim é a data
+ * UTC de agora: com a data local, uma renovação às 21h30 em São Paulo (00h30 UTC do dia
+ * seguinte) ficaria fora do intervalo até o dia virar.
+ */
 export function rangeFor(period: PeriodKey, today = new Date()): DateRange {
-	const to = isoDate(today);
+	const to = today.toISOString().slice(0, 10);
 	if (period === 'all') return { from: '2000-01-01', to };
 	const months = period === '6m' ? 6 : 12;
 	const from = new Date(today.getFullYear(), today.getMonth() - (months - 1), 1);
 	return { from: isoDate(from), to };
 }
 
-/** Preenche meses sem dados com zero para o eixo não pular meses. */
-export function fillMonths(stats: MonthlyStat[]): MonthlyStat[] {
-	if (stats.length === 0) return [];
+/** Mês local (YYYY-MM) de uma data. */
+export const monthOf = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+
+/**
+ * Preenche com zero os meses sem dados, de `from` até `to` (YYYY-MM), para o eixo cobrir o
+ * período escolhido. Sem `from` (período "desde o início"), começa no primeiro mês com dados.
+ * Meses com dados fora dos limites alargam o intervalo em vez de sumir.
+ */
+export function fillMonths(stats: MonthlyStat[], to: string, from: string | null = null): MonthlyStat[] {
 	const sorted = [...stats].sort((a, b) => a.month.localeCompare(b.month));
+	if (sorted.length === 0 && from == null) return [];
 	const byMonth = new Map(sorted.map((s) => [s.month, s]));
-	const [y0, m0] = sorted[0].month.split('-').map(Number);
-	const last = sorted[sorted.length - 1].month;
+	const first = [from, sorted[0]?.month].filter((m): m is string => m != null).sort()[0];
+	const last = [to, sorted[sorted.length - 1]?.month].filter((m): m is string => m != null).sort().at(-1)!;
+	const [y0, m0] = first.split('-').map(Number);
 	const out: MonthlyStat[] = [];
 	for (let y = y0, m = m0; out.length < 1200; m++) {
 		if (m > 12) {
@@ -44,9 +57,14 @@ export const monthLabel = (ym: string) => monthFmt.format(toDate(ym)).replace('.
 export const monthShort = (ym: string) => monthShortFmt.format(toDate(ym)).replace('.', '');
 
 const pctFmt = new Intl.NumberFormat('pt-BR', { style: 'percent', maximumFractionDigits: 0 });
+const pctFmt1 = new Intl.NumberFormat('pt-BR', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const intFmt = new Intl.NumberFormat('pt-BR');
-/** `rate` é uma fração 0..1. */
-export const formatPercent = (rate: number | null | undefined) => (rate == null ? null : pctFmt.format(rate));
+/** `rate` é uma fração 0..1. Abaixo de 1, nunca arredonda para "100 %" (199/200 vira "99,5 %"). */
+export function formatPercent(rate: number | null | undefined): string | null {
+	if (rate == null) return null;
+	if (rate < 1 && rate >= 0.995) return pctFmt1.format(Math.floor(rate * 1000) / 1000);
+	return pctFmt.format(rate);
+}
 export const formatInt = (n: number) => intFmt.format(n);
 
 /** Taxa de sucesso de um mês (null sem tentativas). */

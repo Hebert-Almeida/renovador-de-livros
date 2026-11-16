@@ -34,12 +34,15 @@
 
 	let hover: number | null = $state(null);
 	const tipX = $derived(hover == null ? 0 : m.left + band * hover + band / 2);
+	/* Desloca o tooltip na proporção da posição (0 % na borda esquerda, -100 % na direita) para ele não vazar do gráfico. */
+	const tipShift = $derived(width > 0 ? -Math.min(100, Math.max(0, (tipX / width) * 100)) : -50);
+	const peak = $derived(data.length && data[peakIndex].renewals > 0 ? monthLabel(data[peakIndex].month) : null);
 </script>
 
 <div class="chart" bind:clientWidth={width}>
 	<svg
 		role="img"
-		aria-label={data.length ? t.chartSummary(data.length, total, monthLabel(data[peakIndex].month)) : t.monthlyTitle}
+		aria-label={data.length ? t.chartSummary(data.length, total, peak) : t.monthlyTitle}
 		viewBox={`0 0 ${width} ${height}`}
 		{width}
 		{height}
@@ -75,7 +78,7 @@
 	</svg>
 	{#if hover != null && data[hover]}
 		{@const d = data[hover]}
-		<div class="tip" aria-hidden="true" style:left={`${tipX}px`} style:top={`${y(d.renewals)}px`}>
+		<div class="tip" aria-hidden="true" style:left={`${tipX}px`} style:top={`${y(d.renewals)}px`} style:--tip-shift={`${tipShift}%`}>
 			<strong>{monthLabel(d.month)}</strong>
 			<span>{t.tooltip(d.renewals, d.successes, d.failures)}</span>
 		</div>
@@ -134,7 +137,7 @@
 	}
 	.tip {
 		position: absolute;
-		transform: translate(-50%, calc(-100% - 0.75rem));
+		transform: translate(var(--tip-shift, -50%), calc(-100% - 0.75rem));
 		display: grid;
 		gap: var(--space-1);
 		padding: var(--space-2) var(--space-3);

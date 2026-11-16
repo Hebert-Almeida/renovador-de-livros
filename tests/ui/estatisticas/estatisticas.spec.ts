@@ -60,17 +60,19 @@ test('teclado: período, tabela e ordenação', async ({ page }) => {
 	await expect(select).toBeFocused();
 	await page.keyboard.press('ArrowDown');
 	await expect(select).toHaveValue('all');
+	// a recarga não desmonta o filtro: o foco continua nele
+	await expect(select).toBeFocused();
 	await expect(page.getByText('Livros distintos')).toBeVisible();
 
-	const sortBtn = page.getByRole('button', { name: /Renovações/ });
+	const sortBtn = page.getByRole('button', { name: /Tentativas/ });
 	for (let i = 0; i < 40 && !(await sortBtn.evaluate((el) => el === document.activeElement)); i++) {
 		await page.keyboard.press('Tab');
 	}
 	await expect(sortBtn).toBeFocused();
 	await page.keyboard.press('Enter');
-	await expect(page.locator('th[aria-sort="ascending"]')).toContainText('Renovações');
+	await expect(page.locator('th[aria-sort="ascending"]')).toContainText('Tentativas');
 	await page.keyboard.press('Enter');
-	await expect(page.locator('th[aria-sort="descending"]')).toContainText('Renovações');
+	await expect(page.locator('th[aria-sort="descending"]')).toContainText('Tentativas');
 	const first = page.locator('tbody tr').first();
 	await expect(first).toContainText('9');
 });

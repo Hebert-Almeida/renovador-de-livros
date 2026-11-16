@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, tick } from 'svelte';
+	import { tick, untrack } from 'svelte';
 	import t from '#lib/i18n/pt-BR/estatisticas.ts';
 	import { commands, type MonthlyStat, type StatsOverview } from '#lib/ipc/bindings.ts';
 	import Select from '#lib/components/Select.svelte';
@@ -15,6 +15,7 @@
 		formatInt,
 		formatPercent,
 		monthLabel,
+		monthOf,
 		monthRate,
 		rangeFor,
 		type PeriodKey
@@ -23,36 +24,46 @@
 	const periods = (Object.keys(t.periods) as PeriodKey[]).map((value) => ({ value, label: t.periods[value] }));
 	let period: PeriodKey = $state('12m');
 	let status: 'loading' | 'ready' | 'error' = $state('loading');
-	let overview: StatsOverview | null = $state(null);
+	/** Recarga com conteúdo na tela: não desmonta nada, para não perder o foco nem a ordenação. */
+	let busy = $state(false);
+	let overview = $state<StatsOverview | null>(null);
 	let monthly: MonthlyStat[] = $state([]);
 	let tiles: HTMLElement | undefined = $state();
+	let heading: HTMLElement | undefined = $state();
 	let seq = 0;
 
 	async function load(p: PeriodKey) {
 		const mine = ++seq;
-		status = 'loading';
+		const first = status === 'loading';
+		const fromError = status === 'error';
+		busy = true;
 		try {
-			const range = rangeFor(p);
+			const now = new Date();
+			const range = rangeFor(p, now);
 			const [ov, mo] = await Promise.all([commands.statsOverview(range), commands.statsMonthly(range)]);
 			if (mine !== seq) return;
 			overview = ov;
-			monthly = fillMonths(mo);
+			monthly = fillMonths(mo, monthOf(now), p === 'all' ? null : range.from.slice(0, 7));
 			status = 'ready';
 			await tick();
-			if (tiles) reveal([...tiles.children]);
+			if (first && tiles) reveal([...tiles.children]);
+			// o botão "Tentar de novo" saiu do DOM: leva o foco para o início do conteúdo novo
+			if (fromError) heading?.focus();
 		} catch {
 			if (mine === seq) status = 'error';
+		} finally {
+			if (mine === seq) busy = false;
 		}
 	}
 
-	let mounted = false;
-	onMount(() => {
-		mounted = true;
-		load(period);
+	$effect(() => {
+		const p = period;
+		untrack(() => load(p));
 	});
-	function onPeriod() {
-		if (mounted) load(period);
-	}
+
+	/** O backend manda 0.0 (não null) quando não há tentativas: sem tentativa, não há taxa. */
+	const successRate = $derived(overview && overview.renewals_total > 0 ? overview.success_rate : null);
+	const renewed = $derived(monthly.reduce((sum, m) => sum + m.successes, 0));
 
 	type Row = { month: string; label: string; renewals: number; successes: number; failures: number; rate: string };
 	const columns: Column<Row>[] = [
@@ -80,7 +91,7 @@
 <p class="intro">{t.intro}</p>
 
 <div class="filters">
-	<Select label={t.period} options={periods} bind:value={period} onchange={onPeriod} />
+	<Select label={t.period} options={periods} bind:value={period} />
 </div>
 
 {#if status === 'loading'}
@@ -88,18 +99,18 @@
 {:else if status === 'error'}
 	<EmptyState title={t.errorTitle}>
 		{#snippet actions()}
-			<Button variant="primary" onclick={() => load(period)}>{t.retry}</Button>
+			<Button variant="primary" loading={busy} onclick={() => load(period)}>{t.retry}</Button>
 		{/snippet}
 	</EmptyState>
 {:else if overview}
-	<section aria-label={t.title}>
+	<section aria-label={t.title} aria-busy={busy} tabindex="-1" bind:this={heading} class="content">
 		<dl class="tiles" bind:this={tiles}>
 			<div class="tile"><dt>{t.tiles.distinctBooks}</dt><dd>{formatInt(overview.distinct_books)}</dd></div>
 			<div class="tile"><dt>{t.tiles.activeLoans}</dt><dd>{formatInt(overview.active_loans)}</dd></div>
-			<div class="tile"><dt>{t.tiles.renewals}</dt><dd>{formatInt(overview.renewals_total)}</dd></div>
+			<div class="tile"><dt>{t.tiles.renewals}</dt><dd>{formatInt(renewed)}</dd></div>
 			<div class="tile">
 				<dt>{t.tiles.successRate}</dt>
-				<dd>{formatPercent(overview.success_rate) ?? t.noRate}</dd>
+				<dd>{formatPercent(successRate) ?? t.noRate}</dd>
 			</div>
 			<div class="tile"><dt>{t.tiles.daysGained}</dt><dd>{formatInt(overview.days_gained)}</dd></div>
 		</dl>
@@ -116,7 +127,7 @@
 
 	<section class="monthly" aria-labelledby="est-mensal">
 		<h2 id="est-mensal">{t.monthlyTitle}</h2>
-		{#if overview.renewals_total === 0 && monthly.every((m) => m.renewals === 0)}
+		{#if overview.renewals_total === 0}
 			<EmptyState title={t.emptyTitle} description={t.emptyDescription} headingLevel={3} />
 		{:else}
 			<MonthlyChart data={monthly} />
@@ -126,6 +137,9 @@
 {/if}
 
 <style>
+	.content:focus {
+		outline: none;
+	}
 	.intro {
 		color: var(--color-ink-muted);
 		margin-block-end: var(--space-4);
