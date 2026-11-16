@@ -2,7 +2,8 @@
 //! senha inválida, automação pausada e livro que vence hoje sem renovação.
 
 use chrono::NaiveDate;
-use renovador_core::model::{RenewalEvent, RenewalResult};
+use renovador_core::engine::Notification;
+use renovador_core::model::RenewalResult;
 use tauri::{AppHandle, Manager, Runtime};
 use tauri_plugin_notification::NotificationExt;
 
@@ -33,8 +34,8 @@ pub fn reason(result: RenewalResult) -> &'static str {
     }
 }
 
-pub fn renewed(title: &str, ev: &RenewalEvent) -> Note {
-    let body = match ev.new_due_date {
+pub fn renewed(title: &str, new_due: Option<NaiveDate>) -> Note {
+    let body = match new_due {
         Some(d) => format!("“{title}” agora vence em {}.", br(d)),
         None => format!("“{title}” foi renovado."),
     };
@@ -44,9 +45,9 @@ pub fn renewed(title: &str, ev: &RenewalEvent) -> Note {
     }
 }
 
-pub fn failed(title: &str, ev: &RenewalEvent) -> Note {
-    let mut body = format!("“{title}”: {}.", reason(ev.result));
-    if let Some(d) = ev.old_due_date {
+pub fn failed(title: &str, result: RenewalResult, due: Option<NaiveDate>) -> Note {
+    let mut body = format!("“{title}”: {}.", reason(result));
+    if let Some(d) = due {
         body.push_str(&format!(" Devolva até {}.", br(d)));
     }
     Note {
@@ -95,13 +96,43 @@ pub fn automation_paused(reason: Option<&str>) -> Note {
     }
 }
 
+/// Texto de uma notificação produzida pelo motor. `library` resolve o nome da
+/// biblioteca de uma conta (para "senha inválida").
+pub fn from_engine(
+    n: &Notification,
+    today: NaiveDate,
+    library: impl Fn(renovador_core::model::Id) -> Option<String>,
+) -> Note {
+    match n {
+        Notification::Renewed {
+            title,
+            new_due_date,
+            ..
+        } => renewed(title, *new_due_date),
+        Notification::Failed {
+            title,
+            result,
+            due_date,
+            ..
+        } => failed(title, *result, Some(*due_date)),
+        Notification::DueToday {
+            title, due_date, ..
+        } => skipped_due_today(title, *due_date),
+        Notification::Reminder {
+            title, due_date, ..
+        } => due_soon(title, *due_date, today),
+        Notification::InvalidPassword { account_id } => {
+            invalid_password(&library(*account_id).unwrap_or_else(|| "sua biblioteca".into()))
+        }
+        Notification::AutomationPaused { reason, .. } => automation_paused(Some(reason)),
+    }
+}
+
 /// `true` se o usuário deixou as notificações ligadas (padrão: ligadas).
 fn enabled<R: Runtime>(app: &AppHandle<R>) -> bool {
-    let state = app.state::<AppState>();
-    let guard = state.store.lock().unwrap_or_else(|e| e.into_inner());
-    guard
-        .as_ref()
-        .and_then(|s| s.settings_get().ok())
+    app.state::<AppState>()
+        .with_store(|s| s.settings_get().ok())
+        .flatten()
         .is_none_or(|s| s.notifications)
 }
 
@@ -132,32 +163,45 @@ pub fn init(app: &mut tauri::App) -> tauri::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::Utc;
-    use renovador_core::model::Trigger;
 
-    fn ev(result: RenewalResult) -> RenewalEvent {
-        RenewalEvent {
-            id: 1,
-            loan_id: 1,
-            attempted_at: Utc::now(),
-            trigger: Trigger::Auto,
-            result,
-            old_due_date: NaiveDate::from_ymd_opt(2026, 11, 16),
-            new_due_date: NaiveDate::from_ymd_opt(2026, 11, 30),
-            message: None,
-        }
+    fn d(day: u32) -> NaiveDate {
+        NaiveDate::from_ymd_opt(2026, 11, day).unwrap()
     }
 
     #[test]
     fn renewed_shows_new_date() {
-        let n = renewed("Dom Casmurro", &ev(RenewalResult::Success));
+        let n = renewed("Dom Casmurro", Some(d(30)));
         assert!(n.body.contains("30/11/2026"));
     }
 
     #[test]
     fn failed_shows_reason_and_return_date() {
-        let n = failed("Dom Casmurro", &ev(RenewalResult::Reserved));
+        let n = failed("Dom Casmurro", RenewalResult::Reserved, Some(d(16)));
         assert!(n.body.contains("reservado"));
         assert!(n.body.contains("16/11/2026"));
+    }
+
+    #[test]
+    fn engine_due_today_becomes_skipped_note() {
+        let n = from_engine(
+            &Notification::DueToday {
+                loan_id: 1,
+                title: "Dom Casmurro".into(),
+                due_date: d(16),
+            },
+            d(16),
+            |_| None,
+        );
+        assert_eq!(n, skipped_due_today("Dom Casmurro", d(16)));
+    }
+
+    #[test]
+    fn engine_invalid_password_names_the_library() {
+        let n = from_engine(
+            &Notification::InvalidPassword { account_id: 7 },
+            d(16),
+            |id| (id == 7).then(|| "Biblioteca Central".into()),
+        );
+        assert!(n.body.contains("Biblioteca Central"));
     }
 }

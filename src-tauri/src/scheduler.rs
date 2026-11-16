@@ -2,8 +2,8 @@
 //!
 //! A decisão do que fazer em cada tique é pura ([`Ticker`] e [`plan_tick`]) e
 //! testada com [`FakeClock`](renovador_core::clock::FakeClock). Só há rede quando
-//! existe tarefa vencida; o ciclo em si é do motor (W2-01), chamado pelo comando
-//! congelado `cycle_run_now`.
+//! existe tarefa vencida; o ciclo em si é do motor (W2-01), chamado por
+//! `AppState::run_cycle` com o gatilho real (auto/catch-up não gastam a cota manual).
 
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -152,13 +152,14 @@ mod desktop {
     use std::sync::Arc;
 
     use renovador_core::clock::{Clock, SystemClock};
-    use renovador_core::model::{AccountStatus, CycleReport, RenewalResult, ScheduleFilter};
-    use renovador_core::planner::{in_window, local_date};
+    use renovador_core::engine::Notification;
+    use renovador_core::model::{AccountStatus, ScheduleFilter};
+    use renovador_core::planner::local_date;
     use tauri::{AppHandle, Manager};
     use tauri_specta::Event;
 
     use super::*;
-    use crate::events::AutomationStateEvent;
+    use crate::events::{AutomationStateEvent, CycleFinishedEvent};
     use crate::notify;
     use crate::state::AppState;
 
@@ -193,9 +194,7 @@ mod desktop {
         app: &AppHandle,
         f: impl FnOnce(&renovador_core::store::Store) -> T,
     ) -> Option<T> {
-        let state = app.state::<AppState>();
-        let guard = state.store.lock().unwrap_or_else(|e| e.into_inner());
-        guard.as_ref().map(f)
+        app.state::<AppState>().with_store(f)
     }
 
     fn pending_jobs(app: &AppHandle, now: DateTime<Utc>) -> Vec<Job> {
@@ -255,7 +254,7 @@ mod desktop {
     }
 
     /// Executa os trabalhos de um tique (ou de "Sincronizar agora").
-    pub async fn run_jobs(app: &AppHandle, jobs: Vec<Job>, _trigger: Trigger) {
+    pub async fn run_jobs(app: &AppHandle, jobs: Vec<Job>, trigger: Trigger) {
         for job in jobs {
             match job {
                 Job::Remind {
@@ -282,53 +281,37 @@ mod desktop {
                     kind,
                     schedule_ids,
                 } => {
-                    // O gatilho (auto/catch-up) é decidido pelo comando congelado,
-                    // que não recebe `Trigger`; ver descrição do PR.
-                    let result =
-                        crate::commands::cycle_run_now(app.state(), account_id, kind).await;
-                    let status = match &result {
-                        Ok(_) => ScheduleStatus::Done,
+                    let result = app
+                        .state::<AppState>()
+                        .run_cycle(account_id, kind, trigger)
+                        .await;
+                    match result {
+                        // O motor já fecha os agendamentos que tratou e replaneja a agenda.
+                        Ok(outcome) => {
+                            let _ = CycleFinishedEvent(outcome.report.clone()).emit(app);
+                            notify_outcome(app, &outcome.notifications);
+                        }
                         Err(e) => {
                             tracing::warn!("ciclo da conta {account_id}: {e}");
-                            ScheduleStatus::Failed
+                            for id in schedule_ids {
+                                close_schedule(app, id, ScheduleStatus::Failed);
+                            }
                         }
-                    };
-                    for id in schedule_ids {
-                        close_schedule(app, id, status);
-                    }
-                    if let Ok(report) = result {
-                        notify_report(app, &report);
                     }
                 }
             }
         }
     }
 
-    fn notify_report(app: &AppHandle, report: &CycleReport) {
-        let now = Utc::now();
-        let today = local_date(now);
-        for ev in &report.renewed {
-            if let Some((title, _)) = loan_title(app, ev.loan_id) {
-                notify::send(app, notify::renewed(&title, ev));
-            }
-        }
-        for ev in &report.failed {
-            let Some((title, due)) = loan_title(app, ev.loan_id) else {
-                continue;
-            };
-            // Livro que vence hoje pulado por estar fora da janela.
-            let skipped = ev.result != RenewalResult::Success && due <= today && !in_window(now);
-            let note = if skipped {
-                notify::skipped_due_today(&title, due)
-            } else {
-                notify::failed(&title, ev)
-            };
-            notify::send(app, note);
-        }
-        if let Some(Ok(acc)) = with_store(app, |s| s.account_get(report.account_id))
-            && acc.status == AccountStatus::InvalidPassword
-        {
-            notify::send(app, notify::invalid_password(&acc.library_name));
+    fn notify_outcome(app: &AppHandle, notifications: &[Notification]) {
+        let today = local_date(Utc::now());
+        let library = |id: Id| {
+            with_store(app, |s| s.account_get(id).ok())
+                .flatten()
+                .map(|a| a.library_name)
+        };
+        for n in notifications {
+            notify::send(app, notify::from_engine(n, today, library));
         }
     }
 
