@@ -315,7 +315,10 @@ impl SophiaClient for HttpSophiaClient {
     async fn validate_library(&self, base_url: &str) -> Result<String> {
         let (url, host) = self.site_url(base_url, selectors::LOGIN_PAGE)?;
         // Ainda não há conta: sessão própria no gate com id 0 ("nenhuma conta").
-        let ticket = self.gate.begin_session(0, base_url, Trigger::Manual).await?;
+        let ticket = self
+            .gate
+            .begin_session(0, base_url, Trigger::Manual)
+            .await?;
         let result = async {
             let (permit, resp) = self
                 .send(&ticket, "validate", &host, Request::Get(&url))
