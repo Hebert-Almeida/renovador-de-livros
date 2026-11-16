@@ -1,22 +1,20 @@
-// Licenças das dependências JavaScript de execução (package.json › dependencies).
-// Não há gerador automático no projeto; manter em sincronia com package-lock.json.
+// Licenças de terceiros, geradas dos lockfiles por scripts/gen-licenses.mjs.
+// Rodar `node scripts/gen-licenses.mjs` sempre que as dependências mudarem;
+// tests/ui/sobre confere a parte JS contra o package-lock.json.
+import data from './licenses.generated.json';
+
 export type ThirdPartyLicense = {
+	/** `nome@versão`: o Rust pode ter duas versões do mesmo crate. */
+	id: string;
 	name: string;
 	version: string;
 	license: string;
 };
 
-export const thirdPartyLicenses: ThirdPartyLicense[] = [
-	{ name: '@tauri-apps/api', version: '2.12.4', license: 'Apache-2.0 OR MIT' },
-	{ name: '@tauri-apps/plugin-autostart', version: '2.7.0', license: 'MIT OR Apache-2.0' },
-	{ name: '@tauri-apps/plugin-dialog', version: '2.8.4', license: 'MIT OR Apache-2.0' },
-	{ name: '@tauri-apps/plugin-fs', version: '2.7.1', license: 'MIT OR Apache-2.0' },
-	{ name: '@tauri-apps/plugin-log', version: '2.10.2', license: 'MIT OR Apache-2.0' },
-	{ name: '@tauri-apps/plugin-notification', version: '2.8.1', license: 'MIT OR Apache-2.0' },
-	{ name: '@tauri-apps/plugin-opener', version: '2.7.3', license: 'MIT OR Apache-2.0' },
-	{ name: '@tauri-apps/plugin-os', version: '2.4.0', license: 'MIT OR Apache-2.0' },
-	{ name: 'animejs', version: '4.5.0', license: 'MIT' },
-	{ name: 'gsap', version: '3.15.1', license: 'GSAP Standard "No Charge" License' },
-	{ name: 'svelte', version: '5.57.3', license: 'MIT' },
-	{ name: 'three', version: '0.187.0', license: 'MIT' }
-];
+type Raw = { name: string; version: string; license: string };
+const withId = (rows: Raw[]): ThirdPartyLicense[] => rows.map((r) => ({ id: `${r.name}@${r.version}`, ...r }));
+
+/** Dependências JavaScript de execução (package.json › dependencies). */
+export const jsLicenses: ThirdPartyLicense[] = withId(data.js);
+/** Crates Rust que vão no binário (Windows e Android). */
+export const rustLicenses: ThirdPartyLicense[] = withId(data.rust);

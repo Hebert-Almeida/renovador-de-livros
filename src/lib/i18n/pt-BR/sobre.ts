@@ -46,7 +46,9 @@ export default {
 		name: 'Pacote',
 		versionCol: 'Versão',
 		license: 'Licença',
-		note: 'As dependências Rust do núcleo são verificadas pelo cargo-deny; a lista completa ainda não é gerada no app.'
+		rustSummary: (n: number) => `Bibliotecas Rust do núcleo (${n})`,
+		rustCaption: 'Bibliotecas Rust compiladas no app (Windows e Android)',
+		note: 'Listas geradas a partir de package-lock.json e Cargo.lock; as licenças Rust também são verificadas pelo cargo-deny.'
 	},
 	diagnostics: {
 		heading: 'Diagnóstico',

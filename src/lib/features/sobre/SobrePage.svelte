@@ -9,7 +9,7 @@
 	import { commands } from '#lib/ipc/index.ts';
 	import { reveal } from '#lib/motion/index.ts';
 	import t from '#lib/i18n/pt-BR/sobre.ts';
-	import { thirdPartyLicenses } from './licenses.ts';
+	import { jsLicenses, rustLicenses } from './licenses.ts';
 	import { toRows, DIAGNOSTICS_LIMIT, type DiagnosticRow } from './diagnostics.ts';
 
 	let version: string | null = $state(null);
@@ -94,14 +94,27 @@
 		<h2 id="sobre-licencas">{t.licenses.heading}</h2>
 		<DataTable
 			caption={t.licenses.caption}
-			rowKey="name"
-			rows={thirdPartyLicenses}
+			rowKey="id"
+			rows={jsLicenses}
 			columns={[
 				{ key: 'name', label: t.licenses.name, sortable: true, mono: true },
 				{ key: 'version', label: t.licenses.versionCol, mono: true },
 				{ key: 'license', label: t.licenses.license, sortable: true }
 			]}
 		/>
+		<details class="licencas-rust">
+			<summary>{t.licenses.rustSummary(rustLicenses.length)}</summary>
+			<DataTable
+				caption={t.licenses.rustCaption}
+				rowKey="id"
+				rows={rustLicenses}
+				columns={[
+					{ key: 'name', label: t.licenses.name, sortable: true, mono: true },
+					{ key: 'version', label: t.licenses.versionCol, mono: true },
+					{ key: 'license', label: t.licenses.license, sortable: true }
+				]}
+			/>
+		</details>
 		<p class="source">{t.licenses.note}</p>
 	</section>
 

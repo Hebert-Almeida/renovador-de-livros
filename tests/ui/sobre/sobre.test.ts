@@ -69,3 +69,22 @@ describe('SobrePage', () => {
 		expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível carregar o registro.');
 	});
 });
+
+describe('licenças geradas', () => {
+	it('a lista JS está em sincronia com package.json e package-lock.json', async () => {
+		const { readFileSync } = await import('node:fs');
+		const { jsLicenses: fromLock } = await import('../../../scripts/gen-licenses.mjs');
+		const { jsLicenses } = await import('#lib/features/sobre/licenses.ts');
+		const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
+		const lock = JSON.parse(readFileSync('package-lock.json', 'utf8'));
+		const expected = fromLock(pkg, lock);
+		expect(jsLicenses.map(({ name, version, license }) => ({ name, version, license }))).toEqual(expected);
+	});
+
+	it('inclui as bibliotecas Rust do núcleo', async () => {
+		const { rustLicenses } = await import('#lib/features/sobre/licenses.ts');
+		expect(rustLicenses.length).toBeGreaterThan(50);
+		expect(rustLicenses.some((l) => l.name === 'tauri')).toBe(true);
+		expect(new Set(rustLicenses.map((l) => l.id)).size).toBe(rustLicenses.length);
+	});
+});
