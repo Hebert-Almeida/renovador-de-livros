@@ -472,6 +472,9 @@ impl RequestGate for DefaultGate {
         let account = account_scope(permit.account_id);
         let host = host_scope(&permit.host);
         match outcome {
+            // Login bem-sucedido não prova que o HTML de dados ainda é
+            // reconhecível: só uma resposta OK de outro tipo zera a contagem.
+            RequestOutcome::Ok if permit.kind == LOGIN_KIND => {}
             RequestOutcome::Ok => {
                 for scope in [&account, &host] {
                     self.update_breaker(scope, |st| {
