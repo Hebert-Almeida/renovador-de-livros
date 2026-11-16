@@ -3,6 +3,7 @@ import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/sv
 import Page from '../../../src/routes/ajustes/+page.svelte';
 import { mockCommands, clearMocks } from '#lib/ipc/mock.ts';
 import { applyTheme, applyMotion, errorText, passphraseOk } from '#lib/features/ajustes/settings.ts';
+import { prefersReducedMotion } from '#lib/motion/index.ts';
 
 const base = {
 	theme: 'light',
@@ -54,6 +55,13 @@ describe('settings (lógica)', () => {
 		expect(document.documentElement.dataset.motion).toBe('reduced');
 		applyMotion('system');
 		expect(document.documentElement.dataset.motion).toBeUndefined();
+	});
+	it('lib/motion obedece a escolha de movimento dos Ajustes', () => {
+		applyMotion('reduced');
+		expect(prefersReducedMotion()).toBe(true);
+		applyMotion('full');
+		expect(prefersReducedMotion()).toBe(false);
+		applyMotion('system');
 	});
 	it('valida senha e extrai erros', () => {
 		expect(passphraseOk('1234567')).toBe(false);

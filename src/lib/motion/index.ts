@@ -3,8 +3,16 @@
 import { gsap } from 'gsap';
 import { animate } from 'animejs';
 
+/**
+ * Movimento reduzido? A escolha dos Ajustes (`<html data-motion>`) vence a do
+ * sistema; sem ela, segue `prefers-reduced-motion`.
+ */
 export function prefersReducedMotion(): boolean {
-	if (typeof window === 'undefined' || !window.matchMedia) return true;
+	if (typeof window === 'undefined') return true;
+	const pref = document.documentElement.dataset.motion;
+	if (pref === 'reduced') return true;
+	if (pref === 'full') return false;
+	if (!window.matchMedia) return true;
 	return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
