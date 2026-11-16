@@ -113,8 +113,12 @@ describe('Painel', () => {
 		const live = container.querySelector('.painel__live')!;
 		expect(live).toHaveAttribute('aria-live', 'polite');
 		await emit('cycle-progress-event', { account_id: 1, step: 'list', message: 'Lendo empréstimos', current: 1, total: 2 });
-		await waitFor(() => expect(live).toHaveTextContent('Lendo empréstimos (1 de 2)'));
-		expect(screen.getByRole('list', { name: 'Progresso da sincronização' })).toBeInTheDocument();
+		const steps = screen.getByRole('list', { name: 'Progresso da sincronização' });
+		expect(steps).toBeInTheDocument();
+		// O progresso é anunciado uma vez só, pela região do ProgressSteps.
+		const stepsLive = steps.parentElement!.querySelector('[aria-live]')!;
+		await waitFor(() => expect(stepsLive).toHaveTextContent('em andamento'));
+		expect(live).not.toHaveTextContent('Lendo empréstimos');
 		release();
 		await waitFor(() =>
 			expect(live).toHaveTextContent('Sincronização concluída: 2 empréstimos, 0 renovados.')

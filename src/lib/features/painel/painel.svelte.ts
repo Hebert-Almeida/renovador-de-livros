@@ -90,9 +90,9 @@ export class PainelState {
 
 	onProgress(p: CycleProgress): void {
 		if (this.selectedAccount !== null && p.account_id !== this.selectedAccount) return;
+		// As etapas já são anunciadas pela região viva do ProgressSteps; aqui só
+		// guardamos o progresso para não ler cada evento duas vezes.
 		this.progress = p;
-		const count = p.current != null && p.total != null ? ` (${p.current} de ${p.total})` : '';
-		if (p.message) this.announcement = p.message + count;
 	}
 
 	/** Assina os eventos do backend; devolve a função de limpeza. */
