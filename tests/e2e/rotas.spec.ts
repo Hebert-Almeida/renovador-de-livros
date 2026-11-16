@@ -7,7 +7,11 @@ for (const r of rotas) {
 	test(`rota ${r} abre sem violações axe`, async ({ page }) => {
 		await page.goto(r);
 		await expect(page.locator('h1')).toBeVisible();
-		const res = await new AxeBuilder({ page }).analyze();
-		expect(res.violations).toEqual([]);
+		// Parte do conteúdo (ex.: estado de erro do IPC) entra com fade depois do h1; o axe mede a cor
+		// computada, então um quadro intermediário dá falso positivo de contraste. Repetir a análise até
+		// estabilizar: uma violação real persiste e reprova no prazo.
+		await expect
+			.poll(async () => (await new AxeBuilder({ page }).analyze()).violations, { timeout: 10_000 })
+			.toEqual([]);
 	});
 }
