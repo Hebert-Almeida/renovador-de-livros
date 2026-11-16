@@ -157,11 +157,11 @@ impl Services {
             gate.clone(),
             config.client_config.clone(),
         ));
-        let engine = Arc::new(Engine {
-            gate: gate.clone(),
-            client: client.clone(),
-            clock: config.clock.clone(),
-        });
+        let engine = Arc::new(Engine::new(
+            gate.clone(),
+            client.clone(),
+            config.clock.clone(),
+        ));
         Self {
             store,
             gate,
