@@ -1,11 +1,11 @@
-// Regras puras da tela de agenda (5.6). Horários em America/Sao_Paulo (UTC−03:00, sem horário de verão desde 2019).
+// Regras puras da tela de agenda (5.6). Horários em America/Sao_Paulo, convertidos pelo Intl
+// (respeita qualquer mudança futura de fuso ou horário de verão).
 import type { Schedule, ScheduleStatus } from '#lib/ipc/bindings.ts';
 
 /** Janela permitida, hora local [início, fim) — espelha `guard::limits::AUTO_WINDOW_*`. */
 export const WINDOW_START_HOUR = 7;
 export const WINDOW_END_HOUR = 21;
 export const TIME_ZONE = 'America/Sao_Paulo';
-const OFFSET = '-03:00';
 
 export type Action = 'pause' | 'reactivate' | 'reschedule' | 'cancel';
 
@@ -23,17 +23,44 @@ export function actionsFor(status: ScheduleStatus): Action[] {
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
+const partsFmt = new Intl.DateTimeFormat('en-US', {
+	timeZone: TIME_ZONE,
+	hourCycle: 'h23',
+	year: 'numeric',
+	month: '2-digit',
+	day: '2-digit',
+	hour: '2-digit',
+	minute: '2-digit',
+	second: '2-digit'
+});
+
+/** Campos de data e hora de um instante no fuso de São Paulo. */
+function zonedParts(ms: number) {
+	const get = (type: string) => Number(partsFmt.formatToParts(ms).find((p) => p.type === type)?.value);
+	return { y: get('year'), mo: get('month'), d: get('day'), h: get('hour'), mi: get('minute'), s: get('second') };
+}
+
+/** Diferença (ms) entre o relógio de São Paulo e o UTC no instante dado. */
+function zoneOffset(ms: number): number {
+	const p = zonedParts(ms);
+	return Date.UTC(p.y, p.mo - 1, p.d, p.h, p.mi, p.s) - Math.floor(ms / 1000) * 1000;
+}
+
 /** ISO UTC → valor de `<input type="datetime-local">` no horário de São Paulo. */
 export function toLocalInput(iso: string): string {
-	const d = new Date(new Date(iso).getTime() - 3 * 3600_000);
-	return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+	const p = zonedParts(new Date(iso).getTime());
+	return `${p.y}-${pad(p.mo)}-${pad(p.d)}T${pad(p.h)}:${pad(p.mi)}`;
 }
 
 /** Valor `YYYY-MM-DDTHH:mm` (São Paulo) → ISO UTC, ou null se inválido. */
 export function fromLocalInput(value: string): string | null {
 	if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return null;
-	const d = new Date(`${value}:00${OFFSET}`);
-	return Number.isNaN(d.getTime()) ? null : d.toISOString();
+	const asUtc = new Date(`${value}:00Z`).getTime();
+	if (Number.isNaN(asUtc)) return null;
+	// Duas passadas acertam o deslocamento perto de uma troca de fuso.
+	let ms = asUtc - zoneOffset(asUtc);
+	ms = asUtc - zoneOffset(ms);
+	return new Date(ms).toISOString();
 }
 
 export type RescheduleError = 'invalid' | 'past' | 'window';

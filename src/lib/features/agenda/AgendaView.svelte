@@ -101,6 +101,10 @@
 			rescheduleValue = toLocalInput(s.run_at);
 			rescheduleError = undefined;
 			rescheduleOpen = true;
+			// Leva o foco direto ao campo de data, não ao primeiro botão do diálogo.
+			void tick().then(() =>
+				document.querySelector<HTMLInputElement>('#agenda-reschedule input')?.focus()
+			);
 		} else {
 			void run(s, action);
 		}

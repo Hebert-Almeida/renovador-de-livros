@@ -46,6 +46,10 @@ describe('regras da agenda', () => {
 		expect(fromLocalInput('2099-03-10T09:00')).toBe('2099-03-10T12:00:00.000Z');
 		expect(fromLocalInput('lixo')).toBeNull();
 	});
+	it('usa a base de fusos, não um deslocamento fixo (horário de verão de 2018)', () => {
+		expect(toLocalInput('2018-12-01T12:00:00.000Z')).toBe('2018-12-01T10:00');
+		expect(fromLocalInput('2018-12-01T10:00')).toBe('2018-12-01T12:00:00.000Z');
+	});
 	it('valida a janela 07:00–21:00 e o futuro', () => {
 		const now = new Date('2099-01-01T00:00:00Z');
 		expect(validateRunAt('2099-03-10T07:00', now)).toBeNull();
