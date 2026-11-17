@@ -135,6 +135,18 @@ pub async fn cycle_run_now(
     Ok(report)
 }
 
+/// "Renovar agora" de um empréstimo (Onda 3): renova só esse livro, mesmo fora
+/// da janela de vencimento, com o mesmo gate e cota de um ciclo manual.
+#[tauri::command]
+#[specta::specta]
+pub async fn loan_renew(state: State<'_, AppState>, loan_id: Id) -> Result<CycleReport> {
+    let report = state.loan_renew(loan_id).await?;
+    if let Some(app) = APP.get() {
+        let _ = CycleFinishedEvent(report.clone()).emit(app);
+    }
+    Ok(report)
+}
+
 #[tauri::command]
 #[specta::specta]
 pub async fn quota_status(state: State<'_, AppState>, account_id: Id) -> Result<QuotaStatus> {

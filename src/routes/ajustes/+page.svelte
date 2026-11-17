@@ -16,6 +16,8 @@
 	import {
 		THEMES,
 		MOTIONS,
+		PERIODS,
+		isPeriod,
 		applyTheme,
 		applyMotion,
 		isTheme,
@@ -30,6 +32,7 @@
 	let loadFailed = $state(false);
 	let theme = $state('system');
 	let motion = $state('system');
+	let period = $state('auto');
 	let flags = $state({ notifications: false, autostart: false, app_lock: false });
 
 	let path = $state('');
@@ -44,12 +47,14 @@
 
 	const themeOptions = THEMES.map((v) => ({ value: v, label: t.appearance.themes[v] }));
 	const motionOptions = MOTIONS.map((v) => ({ value: v, label: t.appearance.motions[v] }));
+	const periodOptions = PERIODS.map((v) => ({ value: v, label: t.schedule.periods[v] }));
 	const wipeReady = $derived(wipeText.trim() === t.data.wipeWord);
 
 	function adopt(s: Settings_Serialize) {
 		settings = s;
 		theme = s.theme;
 		motion = s.motion;
+		period = s.renew_period;
 		flags = { notifications: s.notifications, autostart: s.autostart, app_lock: s.app_lock };
 		applyTheme(s.theme);
 		applyMotion(s.motion);
@@ -107,6 +112,13 @@
 			motion = previous;
 			applyMotion(previous);
 		}
+	}
+
+	async function onPeriod(value: string) {
+		if (!settings || !isPeriod(value) || value === settings.renew_period) return;
+		const previous = settings.renew_period;
+		period = value;
+		if (!(await update({ renew_period: value }))) period = previous;
 	}
 
 	async function onFlag(key: Flag, value: boolean) {
@@ -205,6 +217,13 @@
 				<li>{t.schedule.window}</li>
 				<li>{t.schedule.sync}</li>
 			</ul>
+			<Select
+				label={t.schedule.period}
+				hint={t.schedule.periodHint}
+				options={periodOptions}
+				value={period}
+				onchange={(e) => onPeriod(e.currentTarget.value)}
+			/>
 			<Toggle
 				label={t.schedule.notifications}
 				description={t.schedule.notificationsHint}

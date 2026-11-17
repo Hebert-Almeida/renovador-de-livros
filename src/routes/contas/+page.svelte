@@ -87,7 +87,9 @@
 					login: data.login,
 					password: data.password,
 					clear_password: data.clear_password,
-					mode: data.mode
+					mode: data.mode,
+					renew_days_before: data.renew_days_before,
+					remind_days_before: data.remind_days_before
 				});
 				toast(t.updated, 'ok');
 			} else {
@@ -97,8 +99,8 @@
 					login: data.login,
 					password: data.password,
 					mode: data.mode,
-					renew_days_before: 2,
-					remind_days_before: 3
+					renew_days_before: data.renew_days_before,
+					remind_days_before: data.remind_days_before
 				});
 				toast(t.created, 'ok');
 			}
@@ -202,6 +204,8 @@
 						<dd><StatusPill status={statusKind[a.status]} label={t.status[a.status]} /></dd>
 						<dt>{t.mode}</dt>
 						<dd>{t.modes[a.mode]}</dd>
+						<dt>{t.daysLabel}</dt>
+						<dd>{t.daysSummary(a.renew_days_before, a.remind_days_before)}</dd>
 						<dt>{t.passwordLabel}</dt>
 						<dd>{a.has_password ? t.hasPassword : t.noPassword}</dd>
 						<dt>{t.lastSync}</dt>

@@ -9,6 +9,8 @@
 		password: string | null;
 		clear_password: boolean;
 		mode: AccountMode;
+		renew_days_before: number;
+		remind_days_before: number;
 	}
 </script>
 
@@ -21,6 +23,7 @@
 	import Toggle from '#lib/components/Toggle.svelte';
 	import t from '#lib/i18n/pt-BR/contas.ts';
 	import type { Account_Serialize, LibraryPreset } from '#lib/ipc/bindings.ts';
+	import { RENEW_DAYS, REMIND_DAYS, clampDays, range } from './days.ts';
 
 	const CUSTOM = '__custom__';
 
@@ -46,6 +49,16 @@
 	let password = $state('');
 	let clearPassword = $state(false);
 	let mode = $state<string>(initial?.mode ?? 'auto');
+	let renewDays = $state(String(initial?.renew_days_before ?? RENEW_DAYS.default));
+	let remindDays = $state(String(initial?.remind_days_before ?? REMIND_DAYS.default));
+	const renewOptions = range(RENEW_DAYS.min, RENEW_DAYS.max).map((n) => ({
+		value: String(n),
+		label: t.renewDaysOption(n)
+	}));
+	const remindOptions = range(REMIND_DAYS.min, REMIND_DAYS.max).map((n) => ({
+		value: String(n),
+		label: t.remindDaysOption(n)
+	}));
 	let submitted = $state(false);
 	let busy = $state(false);
 
@@ -70,7 +83,9 @@
 				login: login.trim(),
 				password: password && !clearPassword ? password : null,
 				clear_password: clearPassword,
-				mode: mode === 'manual' ? 'manual' : 'auto'
+				mode: mode === 'manual' ? 'manual' : 'auto',
+				renew_days_before: clampDays(renewDays, RENEW_DAYS),
+				remind_days_before: clampDays(remindDays, REMIND_DAYS)
 			});
 			if (ok) password = '';
 		} finally {
@@ -103,6 +118,8 @@
 		]}
 		bind:value={mode}
 	/>
+	<Select label={t.renewDays} hint={t.renewDaysHint} options={renewOptions} bind:value={renewDays} />
+	<Select label={t.remindDays} hint={t.remindDaysHint} options={remindOptions} bind:value={remindDays} />
 	<div class="account-form__actions">
 		<Button onclick={oncancel}>{t.cancel}</Button>
 		<Button type="submit" variant="primary" loading={busy}>{t.save}</Button>

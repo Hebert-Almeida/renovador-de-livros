@@ -1,9 +1,14 @@
 // Lógica pura da tela de ajustes: aplicação de tema/movimento e validações.
-import type { MotionPref, Theme } from '#lib/ipc/bindings.ts';
+import type { MotionPref, RenewPeriod, Theme } from '#lib/ipc/bindings.ts';
 
 export const THEMES: readonly Theme[] = ['system', 'light', 'dark', 'contrast'];
 export const MOTIONS: readonly MotionPref[] = ['system', 'reduced', 'full'];
+export const PERIODS: readonly RenewPeriod[] = ['auto', 'morning', 'afternoon', 'evening'];
 export const MIN_PASSPHRASE = 8;
+
+export function isPeriod(v: string): v is RenewPeriod {
+	return (PERIODS as readonly string[]).includes(v);
+}
 
 /** Aplica o tema em `<html data-theme>`; "system" remove o atributo (tokens.css segue o SO). */
 export function applyTheme(theme: Theme, root: HTMLElement = document.documentElement): void {

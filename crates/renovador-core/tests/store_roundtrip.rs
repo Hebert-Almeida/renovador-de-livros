@@ -243,7 +243,7 @@ fn books_loans_events_schedules_round_trip() {
     let ov = s.stats_overview(range).unwrap();
     assert_eq!(ov.renewals_total, 2);
     assert_eq!(ov.days_gained, 7);
-    assert!((ov.success_rate - 0.5).abs() < 1e-9);
+    assert!((ov.success_rate.unwrap() - 0.5).abs() < 1e-9);
     assert_eq!(ov.active_loans, 1);
     assert_eq!(ov.distinct_books, 2);
     assert_eq!(ov.most_renewed.unwrap().id, b1.id);

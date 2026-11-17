@@ -167,7 +167,15 @@ mod desktop {
     const POLL: std::time::Duration = std::time::Duration::from_secs(60);
 
     pub fn start(app: AppHandle) {
-        app.manage(Arc::new(SchedulerControl::default()));
+        let control = Arc::new(SchedulerControl::default());
+        // A pausa da bandeja sobrevive a reinícios (Ajustes: automation_paused).
+        if with_store(&app, |s| s.settings_get().ok())
+            .flatten()
+            .is_some_and(|s| s.automation_paused)
+        {
+            control.set_paused(true);
+        }
+        app.manage(control);
         tauri::async_runtime::spawn(run_loop(app, Arc::new(SystemClock)));
     }
 
@@ -340,6 +348,13 @@ mod desktop {
         let control = app.state::<Arc<SchedulerControl>>();
         let paused = !control.is_paused();
         control.set_paused(paused);
+        let patch = renovador_core::model::SettingsPatch {
+            automation_paused: Some(paused),
+            ..Default::default()
+        };
+        if let Some(Err(e)) = with_store(app, |s| s.settings_set(&patch)) {
+            tracing::warn!("não foi possível salvar a pausa: {e}");
+        }
         let state = renovador_core::model::AutomationState {
             enabled: !paused,
             remote_enabled: true,

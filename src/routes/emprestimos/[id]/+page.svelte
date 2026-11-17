@@ -88,7 +88,8 @@
 		const loanId = detail.view.loan.id;
 		renewing = true;
 		try {
-			const r = await commands.cycleRunNow(detail.view.book.account_id, 'renew_due');
+			// Renova só este livro, mesmo fora da janela de vencimento (mesmo gate e cota).
+			const r = await commands.loanRenew(loanId);
 			const ok = r.renewed.some((e) => e.loan_id === loanId);
 			toast(t.renewDone(ok ? 1 : 0), ok ? 'ok' : 'info');
 		} catch (e) {

@@ -33,8 +33,13 @@ pub fn show_main(app: &AppHandle) {
 pub fn init(app: &mut tauri::App) -> tauri::Result<()> {
     let open = MenuItem::with_id(app, "open", "Abrir", true, None::<&str>)?;
     let sync = MenuItem::with_id(app, "sync", "Sincronizar agora", true, None::<&str>)?;
+    let paused = app
+        .state::<crate::state::AppState>()
+        .with_store(|s| s.settings_get().ok())
+        .flatten()
+        .is_some_and(|s| s.automation_paused);
     let pause =
-        CheckMenuItem::with_id(app, "pause", "Pausar automação", true, false, None::<&str>)?;
+        CheckMenuItem::with_id(app, "pause", "Pausar automação", true, paused, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Sair", true, None::<&str>)?;
     let sep = PredefinedMenuItem::separator(app)?;
     let menu = Menu::with_items(app, &[&open, &sync, &pause, &sep, &quit])?;

@@ -12,8 +12,9 @@ export const UFTM_FALLBACK: LibraryPreset = {
 	supported: true
 };
 
-export const DEFAULT_RENEW_DAYS = 2;
-export const DEFAULT_REMIND_DAYS = 3;
+// Padrões da seção 5.4 (iguais aos da tela Contas): renova 1 dia antes, lembra 2 dias antes.
+export const DEFAULT_RENEW_DAYS = 1;
+export const DEFAULT_REMIND_DAYS = 2;
 
 /** Escolhe o preset inicial: o primeiro suportado (UFTM). */
 export function defaultPreset(presets: LibraryPreset[]): LibraryPreset {

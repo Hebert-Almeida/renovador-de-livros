@@ -93,6 +93,7 @@ fn run(now: DateTime<Utc>, acc: &Account, loans: &[LoanView], existing: &[Schedu
         loans,
         existing,
         install_seed: SEED,
+        prefs: Prefs::default(),
     })
     .unwrap()
 }
@@ -425,7 +426,15 @@ fn due_for_renewal_table() {
 fn retry_only_for_network_error() {
     let due = d(2026, 6, 16);
     let now = local(2026, 6, 15, 10, 0);
-    let at = retry_after_failure(RenewalResult::NetworkError, due, now, SEED, ACC).unwrap();
+    let at = retry_after_failure(
+        RenewalResult::NetworkError,
+        due,
+        now,
+        SEED,
+        ACC,
+        RenewPeriod::Auto,
+    )
+    .unwrap();
     assert_eq!(at, at_minute(due, window_minute(SEED, ACC)));
 
     for r in [
@@ -438,24 +447,49 @@ fn retry_only_for_network_error() {
         RenewalResult::RateLimited,
         RenewalResult::Success,
     ] {
-        assert_eq!(retry_after_failure(r, due, now, SEED, ACC), None, "{r:?}");
+        assert_eq!(
+            retry_after_failure(r, due, now, SEED, ACC, RenewPeriod::Auto),
+            None,
+            "{r:?}"
+        );
     }
 
     // No próprio dia do vencimento: daqui a 1 h, se couber na janela.
     let now = local(2026, 6, 16, 10, 0);
     assert_eq!(
-        retry_after_failure(RenewalResult::NetworkError, due, now, SEED, ACC),
+        retry_after_failure(
+            RenewalResult::NetworkError,
+            due,
+            now,
+            SEED,
+            ACC,
+            RenewPeriod::Auto
+        ),
         Some(local(2026, 6, 16, 11, 0))
     );
     let late = local(2026, 6, 16, 20, 30);
     assert_eq!(
-        retry_after_failure(RenewalResult::NetworkError, due, late, SEED, ACC),
+        retry_after_failure(
+            RenewalResult::NetworkError,
+            due,
+            late,
+            SEED,
+            ACC,
+            RenewPeriod::Auto
+        ),
         None
     );
     // Já vencido.
     let after = local(2026, 6, 17, 10, 0);
     assert_eq!(
-        retry_after_failure(RenewalResult::NetworkError, due, after, SEED, ACC),
+        retry_after_failure(
+            RenewalResult::NetworkError,
+            due,
+            after,
+            SEED,
+            ACC,
+            RenewPeriod::Auto
+        ),
         None
     );
 }
@@ -478,6 +512,7 @@ fn foreign_schedule_is_rejected() {
         loans: &[],
         existing: &[s],
         install_seed: SEED,
+        prefs: Prefs::default(),
     });
     assert!(r.is_err());
 }
@@ -489,4 +524,74 @@ fn due_today_after_window_becomes_reminder() {
     let p = run(now, &acc, &[loan(10, d(2026, 6, 16), true)], &[]);
     assert!(of_kind(&p, ScheduleKind::Renew).is_empty());
     assert_eq!(of_kind(&p, ScheduleKind::Remind).len(), 1);
+}
+
+fn run_with(now: DateTime<Utc>, acc: &Account, loans: &[LoanView], prefs: Prefs) -> Plan {
+    plan(&PlanInput {
+        now,
+        account: acc,
+        loans,
+        existing: &[],
+        install_seed: SEED,
+        prefs,
+    })
+    .unwrap()
+}
+
+#[test]
+fn slot_minute_stays_inside_the_chosen_period() {
+    // Auto continua igual ao minuto da janela inteira (instalações antigas não mudam).
+    for acc in 1..20 {
+        assert_eq!(
+            slot_minute(SEED, acc, RenewPeriod::Auto),
+            window_minute(SEED, acc)
+        );
+    }
+    for (period, from_h, to_h) in [
+        (RenewPeriod::Morning, 7, 12),
+        (RenewPeriod::Afternoon, 12, 17),
+        (RenewPeriod::Evening, 17, 21),
+    ] {
+        for seed in 0..200 {
+            let m = slot_minute(seed, ACC, period);
+            let hour = 7 + m / 60;
+            assert!((from_h..to_h).contains(&hour), "{period:?}: {hour}h");
+        }
+    }
+}
+
+#[test]
+fn renewal_is_planned_in_the_chosen_period() {
+    let acc = account(AccountMode::Auto, AccountStatus::Active);
+    let now = local(2026, 6, 15, 6, 0);
+    let loans = [loan(10, d(2026, 6, 20), true)];
+    let prefs = Prefs {
+        period: RenewPeriod::Evening,
+    };
+    let p = run_with(now, &acc, &loans, prefs);
+    let renew = of_kind(&p, ScheduleKind::Renew);
+    assert_eq!(renew.len(), 1);
+    let at = renew[0].run_at.with_timezone(&TZ);
+    assert!((17..21).contains(&chrono::Timelike::hour(&at)), "{at}");
+}
+
+#[test]
+fn remind_days_before_of_the_account_changes_the_early_reminder() {
+    let now = local(2026, 6, 10, 6, 0);
+    let loans = [loan(10, d(2026, 6, 20), false)];
+    let dates = |days: u8| -> Vec<NaiveDate> {
+        let mut acc = account(AccountMode::Manual, AccountStatus::Active);
+        acc.remind_days_before = days;
+        let p = run_with(now, &acc, &loans, Prefs::default());
+        let mut v: Vec<_> = of_kind(&p, ScheduleKind::Remind)
+            .iter()
+            .map(|s| local_date(s.run_at))
+            .collect();
+        v.sort();
+        v
+    };
+    assert_eq!(dates(2), [d(2026, 6, 18), d(2026, 6, 20)]);
+    assert_eq!(dates(5), [d(2026, 6, 15), d(2026, 6, 20)]);
+    // 0: só o lembrete do dia, sem duplicar.
+    assert_eq!(dates(0), [d(2026, 6, 20)]);
 }

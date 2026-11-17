@@ -25,6 +25,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::loan_set_auto_renew,
             commands::loan_mark_returned,
             commands::cycle_run_now,
+            commands::loan_renew,
             commands::quota_status,
             commands::schedule_list,
             commands::schedule_cancel,
@@ -99,9 +100,10 @@ pub fn run() {
         .invoke_handler(specta.invoke_handler())
         .setup(move |app| {
             specta.mount_events(app);
+            commands::setup(app)?;
+            // Depois do setup: a bandeja lê dos Ajustes se a automação está pausada.
             #[cfg(desktop)]
             tray::init(app)?;
-            commands::setup(app)?;
             notify::init(app)?;
             scheduler::start(app.handle().clone());
             Ok(())

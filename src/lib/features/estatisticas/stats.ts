@@ -6,13 +6,12 @@ const pad = (n: number) => String(n).padStart(2, '0');
 export const isoDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
 /**
- * Intervalo inclusivo (YYYY-MM-DD) para o período, começando no 1º dia do mês local.
- * O banco grava `attempted_at` em UTC e compara as datas como texto, então o fim é a data
- * UTC de agora: com a data local, uma renovação às 21h30 em São Paulo (00h30 UTC do dia
- * seguinte) ficaria fora do intervalo até o dia virar.
+ * Intervalo inclusivo de datas locais (YYYY-MM-DD) para o período, começando no 1º dia do
+ * mês. O backend converte as datas para o fuso de Brasília antes de comparar com
+ * `attempted_at` (UTC) e agrupa os meses no mesmo fuso.
  */
 export function rangeFor(period: PeriodKey, today = new Date()): DateRange {
-	const to = today.toISOString().slice(0, 10);
+	const to = isoDate(today);
 	if (period === 'all') return { from: '2000-01-01', to };
 	const months = period === '6m' ? 6 : 12;
 	const from = new Date(today.getFullYear(), today.getMonth() - (months - 1), 1);

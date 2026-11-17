@@ -168,6 +168,9 @@ struct Run<'a> {
     trigger: Trigger,
     now: DateTime<Utc>,
     seed: u64,
+    prefs: planner::Prefs,
+    /// "Renovar agora" de um empréstimo só: ignora a janela de vencimento.
+    only_loan: Option<Id>,
     out: CycleOutcome,
 }
 
@@ -215,6 +218,50 @@ impl Engine {
         password: Option<&str>,
         progress: ProgressFn<'_>,
     ) -> Result<CycleOutcome> {
+        self.cycle(store, account_id, kind, trigger, password, None, progress)
+            .await
+    }
+
+    /// "Renovar agora" de um empréstimo, mesmo fora da janela de vencimento.
+    /// Passa pelo mesmo gate, cota e confirmação de um ciclo manual.
+    pub async fn renew_loan(
+        &self,
+        store: &Store,
+        loan_id: Id,
+        progress: ProgressFn<'_>,
+    ) -> Result<CycleOutcome> {
+        let lv = store.loan_get(loan_id)?.view;
+        if lv.loan.status == LoanStatus::Returned || lv.loan.returned_at.is_some() {
+            return Err(Error::Invalid("o empréstimo já foi devolvido".into()));
+        }
+        if lv.loan.due_date < planner::local_date(self.clock.now()) {
+            return Err(Error::Invalid(
+                "o empréstimo está atrasado e a biblioteca não renova".into(),
+            ));
+        }
+        self.cycle(
+            store,
+            lv.book.account_id,
+            CycleKind::RenewDue,
+            Trigger::Manual,
+            None,
+            Some(loan_id),
+            progress,
+        )
+        .await
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    async fn cycle(
+        &self,
+        store: &Store,
+        account_id: Id,
+        kind: CycleKind,
+        trigger: Trigger,
+        password: Option<&str>,
+        only_loan: Option<Id>,
+        progress: ProgressFn<'_>,
+    ) -> Result<CycleOutcome> {
         let account = store.account_get(account_id)?;
         let emit = |step: CycleStep, message: &str, current: Option<u32>, total: Option<u32>| {
             progress(CycleProgress {
@@ -252,6 +299,8 @@ impl Engine {
             store,
             now: self.clock.now(),
             seed,
+            prefs: db::plan_prefs(store),
+            only_loan,
             out: CycleOutcome::empty(account_id),
             account,
             trigger,
@@ -363,10 +412,22 @@ impl Engine {
         // 4. O planner decide o que renovar.
         let mut fatal = None;
         if kind == CycleKind::RenewDue {
-            let due: Vec<LoanView> = planner::due_for_renewal(run.now, &acc, &views)
-                .into_iter()
-                .cloned()
-                .collect();
+            let due: Vec<LoanView> = match run.only_loan {
+                // Pedido do usuário para um livro: vale mesmo fora da janela.
+                Some(id) => views
+                    .iter()
+                    .filter(|lv| {
+                        lv.loan.id == id
+                            && lv.loan.status == LoanStatus::Active
+                            && lv.loan.returned_at.is_none()
+                    })
+                    .cloned()
+                    .collect(),
+                None => planner::due_for_renewal(run.now, &acc, &views)
+                    .into_iter()
+                    .cloned()
+                    .collect(),
+            };
             let remote_by_key: HashMap<&str, &RemoteLoan> =
                 remote.iter().map(|r| (r.item_key.as_str(), r)).collect();
             let total = due.len() as u32;
@@ -528,8 +589,14 @@ impl Engine {
             message: message.clone(),
         })?;
 
-        let retry_at =
-            planner::retry_after_failure(result, old_due, run.now, run.seed, run.account.id);
+        let retry_at = planner::retry_after_failure(
+            result,
+            old_due,
+            run.now,
+            run.seed,
+            run.account.id,
+            run.prefs.period,
+        );
         if let Some(at) = retry_at {
             run.store.schedule_insert(&Schedule {
                 id: 0,
@@ -646,6 +713,24 @@ impl Engine {
         Ok(())
     }
 
+    /// Recalcula a agenda da conta sem acessar a rede, depois de uma mudança
+    /// local (período ou lembrete nos Ajustes, antecedência ou modo da conta).
+    /// Notificações geradas aqui são descartadas: o próximo ciclo as refaz.
+    pub fn replan_local(&self, store: &Store, account_id: Id) -> Result<()> {
+        let account = store.account_get(account_id)?;
+        let mut run = Run {
+            store,
+            now: self.clock.now(),
+            seed: db::install_seed(store)?,
+            prefs: db::plan_prefs(store),
+            only_loan: None,
+            out: CycleOutcome::empty(account_id),
+            account,
+            trigger: Trigger::Manual,
+        };
+        self.replan(&mut run)
+    }
+
     /// Recalcula a agenda da conta com o planner e grava as mudanças.
     fn replan(&self, run: &mut Run<'_>) -> Result<()> {
         let store = run.store;
@@ -664,6 +749,7 @@ impl Engine {
             loans: &loans,
             existing: &existing,
             install_seed: run.seed,
+            prefs: run.prefs,
         })?;
         for id in plan.cancel {
             store.schedule_set_status(id, ScheduleStatus::Cancelled, ScheduleOrigin::System)?;
@@ -724,6 +810,8 @@ impl Engine {
                     store,
                     now,
                     seed: db::install_seed(store)?,
+                    prefs: db::plan_prefs(store),
+                    only_loan: None,
                     out: CycleOutcome::empty(acc.id),
                     account: acc,
                     trigger: Trigger::Auto,
