@@ -480,6 +480,23 @@ Todos os caminhos de `crates/...` abaixo são relativos a `crates/renovador-core
   - checklist de release;
   - **publicar só depois da anuência por escrito.**
 
+### Estado da Onda 3
+
+Feito (PRs #29–#34):
+- **Android**: projeto gerado, chave do banco vinda do Keystore pelo plugin, WorkManager seguindo a agenda, notificações em segundo plano com `POST_NOTIFICATIONS`, sem backup automático do sistema; APK de debug em todo CI; release gera APK e AAB assinados (keystore nos secrets do environment `publicacao`).
+- **Empacotamento**: NSIS (4,6 MB) e MSI (6,1 MB) medidos no Windows; AppImage/deb/rpm e dmg universal pelo workflow de release, que recusa instaladores desktop acima de 15 MB (exceto AppImage); `THIRD-PARTY-NOTICES.md` completo (JS medido no bundle, C vendorizado, Rust e Maven), dentro dos instaladores e verificado no CI.
+- **QA**: axe nos três temas, fluxos por teclado e alvos de 44 px em todas as telas, agora no CI (job "telas"); JS inicial de 87–93 KB gz por rota (orçamento 150 KB), Three só sob demanda e nunca com movimento reduzido; revisão de segurança (capabilities mínimas, HTTPS, SQL parametrizado, sem sinks de HTML, CSP).
+- **Entrega**: manual do usuário com capturas (`docs/manual-do-usuario.md`, geradas por `tests/manual`); guia de manutenção com empacotamento, keystore e checklist de release.
+
+Depende de pessoas, equipamento ou credenciais:
+- teste num Android físico (Doze, modo avião, notificações) e manual no Windows (bandeja, autostart, catch-up);
+- testes com NVDA, TalkBack e VoiceOver; abertura ≤ 1 s e bandeja ≤ 40 MB medidos no build de release;
+- `/impeccable audit`, `critique` e `polish` (skill não instalada neste ambiente);
+- keystore Android e par Ed25519 da política gerados e guardados pela Editora; revisores obrigatórios no environment `publicacao`;
+- iOS (Mac e conta Apple); assinatura de código Windows/macOS (certificados);
+- parser real (fixtures da P3) e o teste com conta real da seção 10;
+- **anuência por escrito antes de publicar.**
+
 ### Pendências herdadas da Onda 2
 
 Lacunas encontradas na revisão da Onda 2. As que mudavam contratos congelados foram feitas na Onda 3 (branch `onda3/pendencias`), com o motivo explicado no PR.
