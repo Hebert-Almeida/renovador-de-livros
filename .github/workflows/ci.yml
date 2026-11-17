@@ -87,8 +87,14 @@ jobs:
           distribution: temurin
           java-version: 17
       # O runner ubuntu já traz Android SDK e NDK pré-instalados.
+      # O NDK r23+ não traz mais as binutils (<triplo>-ranlib/-ar): o OpenSSL
+      # vendorizado usa as ferramentas LLVM do próprio NDK.
       - name: NDK
-        run: echo "NDK_HOME=$ANDROID_NDK_LATEST_HOME" >> "$GITHUB_ENV"
+        run: |
+          echo "NDK_HOME=$ANDROID_NDK_LATEST_HOME" >> "$GITHUB_ENV"
+          bin="$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          echo "RANLIB=$bin/llvm-ranlib" >> "$GITHUB_ENV"
+          echo "AR=$bin/llvm-ar" >> "$GITHUB_ENV"
       - name: Toolchain Rust (targets Android)
         run: rustup show
       - uses: Swatinem/rust-cache@v2
