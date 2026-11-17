@@ -37,7 +37,18 @@ export const TARGETS = [
 	'x86_64-linux-android'
 ];
 
-function rustFor(target) {
+/** Ordem por código de caractere: igual em qualquer máquina (localeCompare depende do ICU/locale). */
+export const cmp = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+
+const closures = new Map();
+
+/** Pacotes Rust de execução do app num alvo (memorizado: cada `cargo metadata` leva segundos). */
+export function rustFor(target) {
+	if (!closures.has(target)) closures.set(target, computeRustFor(target));
+	return closures.get(target);
+}
+
+function computeRustFor(target) {
 	const meta = JSON.parse(
 		execFileSync('cargo', ['metadata', '--format-version', '1', '--locked', '--filter-platform', target], {
 			cwd: root,
@@ -74,7 +85,7 @@ export function rustLicenses() {
 			version: p.version,
 			license: p.license ?? 'desconhecida'
 		}))
-		.sort((a, b) => a.name.localeCompare(b.name) || a.version.localeCompare(b.version));
+		.sort((a, b) => cmp(a.name, b.name) || cmp(a.version, b.version));
 }
 
 /** Conteúdo de licenses.generated.json (tela Sobre). */

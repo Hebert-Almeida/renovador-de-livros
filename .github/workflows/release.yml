@@ -19,8 +19,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Toolchain Rust
         run: rustup show
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-bin: true
       - name: cargo-about
-        run: cargo install cargo-about --locked --version 0.9.3 --features cli
+        run: cargo about --version 2>/dev/null | grep -qx 'cargo-about 0.9.3' || cargo install cargo-about --locked --version 0.9.3 --features cli
       # O cargo-about roda offline: baixa antes os crates de todos os alvos.
       - name: cargo fetch
         run: cargo fetch --locked
@@ -95,8 +98,11 @@ jobs:
 
   android:
     name: release (android)
-    # Depois do desktop: a release em rascunho já existe para receber o APK/AAB.
-    needs: desktop
+    # Depois do desktop, para anexar o APK/AAB à release em rascunho que ele cria.
+    # Roda mesmo se alguma plataforma desktop falhar (fail-fast: false); só as
+    # pré-checagens são obrigatórias.
+    needs: [notices, desktop]
+    if: ${{ !cancelled() && needs.notices.result == 'success' }}
     environment: publicacao
     runs-on: ubuntu-24.04
     steps:
@@ -131,10 +137,12 @@ jobs:
             exit 1
           fi
           echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          # O Gradle lê o arquivo com java.util.Properties: "\" é escape e precisa dobrar.
+          esc() { printf '%s' "$1" | sed 's/\\/\\\\/g'; }
           {
-            echo "storeFile=$RUNNER_TEMP/release.jks"
-            echo "keyAlias=$ANDROID_KEY_ALIAS"
-            echo "password=$ANDROID_KEY_PASSWORD"
+            echo "storeFile=$(esc "$RUNNER_TEMP/release.jks")"
+            echo "keyAlias=$(esc "$ANDROID_KEY_ALIAS")"
+            echo "password=$(esc "$ANDROID_KEY_PASSWORD")"
           } > src-tauri/gen/android/keystore.properties
       - name: Build Android release (APK e AAB)
         run: npx tauri android build --apk --aab
@@ -148,6 +156,8 @@ jobs:
           cp "$out/apk/universal/release/app-universal-release.apk" "dist-android/renovador-de-livros_${version}_android.apk"
           cp "$out/bundle/universalRelease/app-universal-release.aab" "dist-android/renovador-de-livros_${version}_android.aab"
           (cd dist-android && sha256sum * > SHA256SUMS-android.txt)
+          # Se nenhum job desktop chegou a criar a release, cria o rascunho aqui.
+          gh release view "v${version}" >/dev/null 2>&1 || gh release create "v${version}"             --draft --prerelease --target "$GITHUB_SHA"             --title "Renovador de Livros v${version}" --notes "Release em rascunho — revisar antes de publicar."
           gh release upload "v${version}" dist-android/* --clobber
       - name: Apagar a keystore do runner
         if: always()

@@ -6,7 +6,19 @@ O Renovador de Livros é licenciado sob MIT OR Apache-2.0. Ele inclui os compone
 
 ## 1. Interface (JavaScript)
 
-11 pacotes de execução incluídos na interface.
+15 pacotes: os que o build coloca na interface e as dependências de execução.
+
+### @sveltejs/kit 3.2.0 (MIT)
+
+```text
+Copyright (c) 2020 [these people](https://github.com/sveltejs/kit/graphs/contributors)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
 
 ### @tauri-apps/api 2.12.4 (Apache-2.0 OR MIT)
 
@@ -259,6 +271,32 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
+### clsx 2.1.1 (MIT)
+
+```text
+MIT License
+
+Copyright (c) Luke Edwards <luke.edwards05@gmail.com> (lukeed.com)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+### devalue 5.9.4 (MIT)
+
+```text
+Copyright (c) 2018-19 [these people](https://github.com/rich-harris/devalue/graphs/contributors)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
 ### gsap 3.15.1 (Standard 'no charge' license: https://gsap.com/standard-license.)
 
 ```text
@@ -318,6 +356,18 @@ Effective date: April 30, 2025
 Last modified date: May 30, 2025
 
 Copyright (©) 2025, Webflow
+```
+
+### svelte 5.57.3 (MIT)
+
+```text
+Copyright (c) 2016-2025 [Svelte Contributors](https://github.com/sveltejs/svelte/graphs/contributors)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
 ### three 0.187.0 (MIT)
@@ -4932,10 +4982,10 @@ SOFTWARE.
 
 ### MIT License (MIT)
 
-Usada por: num_threads 0.1.8.
+Usada por: num-conv 0.2.2.
 
 ```text
-Copyright (c) 2021 Jacob Pratt
+Copyright (c) Jacob Pratt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -4958,10 +5008,10 @@ SOFTWARE.
 
 ### MIT License (MIT)
 
-Usada por: num-conv 0.2.2.
+Usada por: num_threads 0.1.8.
 
 ```text
-Copyright (c) Jacob Pratt
+Copyright (c) 2021 Jacob Pratt
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -8527,3 +8577,20 @@ the following restrictions:
 
 3. This notice may not be removed or altered from any source distribution.
 ```
+
+## 4. Android (bibliotecas Java/Kotlin)
+
+Só no APK/AAB. Dependências declaradas nos módulos Gradle do app, do plugin de segundo plano, do runtime `tauri-android` e dos plugins do Tauri (o código desses módulos está na seção 3, crates `tauri` e `tauri-plugin-*`). As dependências transitivas delas (AndroidX, Kotlin) seguem a mesma licença dos respectivos grupos. O texto completo da Apache-2.0 está na seção 3.
+
+| Artefato | Versão | Licença | Autor |
+|---|---|---|---|
+| androidx.activity:activity-ktx | 1.10.1 | Apache-2.0 | Google (AndroidX) |
+| androidx.appcompat:appcompat | 1.7.1 | Apache-2.0 | Google (AndroidX) |
+| androidx.browser:browser | 1.8.0 | Apache-2.0 | Google (AndroidX) |
+| androidx.core:core-ktx | 1.13.1 | Apache-2.0 | Google (AndroidX) |
+| androidx.lifecycle:lifecycle-process | 2.10.0 | Apache-2.0 | Google (AndroidX) |
+| androidx.webkit:webkit | 1.14.0 | Apache-2.0 | Google (AndroidX) |
+| androidx.work:work-runtime-ktx | 2.10.0 | Apache-2.0 | Google (AndroidX) |
+| com.fasterxml.jackson.core:jackson-databind | 2.15.3 | Apache-2.0 | FasterXML (Jackson) |
+| com.fasterxml.jackson.datatype:jackson-datatype-json-org | 2.15.3 | Apache-2.0 | FasterXML (Jackson) |
+| com.google.android.material:material | 1.13.0 | Apache-2.0 | Google (Material Components) |

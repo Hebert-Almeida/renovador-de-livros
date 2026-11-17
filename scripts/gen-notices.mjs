@@ -3,23 +3,27 @@
 // vão nos instaladores) e src/lib/features/sobre/licenses.generated.json.
 //
 // Fontes:
-// - Rust: `cargo about` (about.toml), só dependências de execução, offline,
-//   lendo os arquivos de licença dos próprios crates;
+// - JavaScript: os pacotes que o Vite de fato coloca no bundle do cliente
+//   (inclui o runtime do Svelte/SvelteKit, que são devDependencies) mais as
+//   dependências de execução do package.json; texto do arquivo de licença de
+//   cada pacote. O GSAP não traz o texto no pacote: vale a cópia oficial em
+//   docs/legal/licenca-gsap.txt;
 // - código C compilado no binário por dependências de build (OpenSSL e
 //   SQLCipher/SQLite/LibTomCrypt), lido dos fontes vendorizados;
-// - JavaScript: pacotes de execução do package-lock.json, com o arquivo de
-//   licença de cada pacote em node_modules; o GSAP não traz o texto no pacote,
-//   então vale a cópia oficial em docs/legal/licenca-gsap.txt.
+// - Android: dependências Maven declaradas nos módulos Gradle que entram no APK;
+// - Rust: `cargo about` (about.toml), só dependências de execução, offline,
+//   lendo os arquivos de licença dos próprios crates.
 //
 // Uso:
 //   node scripts/gen-notices.mjs           regrava os dois arquivos
 //   node scripts/gen-notices.mjs --check   falha se algum estiver desatualizado
-// Requer `cargo install cargo-about --locked --features cli` e `npm ci`.
+// Requer `cargo install cargo-about --locked --version 0.9.3 --features cli` e `npm ci`.
 import { execFileSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { licensesJson } from './gen-licenses.mjs';
+import { cmp, licensesJson, rustFor } from './gen-licenses.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const NOTICES = join(root, 'THIRD-PARTY-NOTICES.md');
@@ -33,44 +37,69 @@ const fence = (text) => {
 	return `${ticks}text\n${body}\n${ticks}`;
 };
 
-function cargoAbout() {
-	const out = execFileSync(
-		'cargo',
-		['about', 'generate', '--format', 'json', '-c', 'about.toml', '-m', 'src-tauri/Cargo.toml', '--locked', '--offline', '--fail'],
-		{ cwd: root, maxBuffer: 512 * 1024 * 1024, stdio: ['ignore', 'pipe', 'inherit'] }
-	);
-	return JSON.parse(out.toString());
+// ---------------------------------------------------------------- JavaScript
+
+/** Pacotes npm presentes no bundle do cliente, medidos num build do Vite. */
+function bundledPackages() {
+	const dir = mkdtempSync(join(tmpdir(), 'renovador-notices-'));
+	const out = join(dir, 'packages.json');
+	try {
+		execFileSync(process.execPath, [join(root, 'node_modules/vite/bin/vite.js'), 'build', '--logLevel', 'error'], {
+			cwd: root,
+			env: { ...process.env, RENOVADOR_BUNDLED_PACKAGES: out },
+			stdio: ['ignore', 'ignore', 'inherit']
+		});
+		return JSON.parse(readFileSync(out, 'utf8'));
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
 }
 
-function rustSection(about) {
-	// Um bloco por texto de licença distinto, com os crates que o usam.
-	const blocks = about.licenses
-		.map((l) => ({
-			name: l.name,
-			id: l.id,
-			text: norm(l.text).trim(),
-			users: [...new Set(l.used_by.map((u) => `${u.crate.name} ${u.crate.version}`))].sort()
-		}))
-		.sort((a, b) => a.id.localeCompare(b.id) || a.users[0].localeCompare(b.users[0]) || a.text.localeCompare(b.text));
-	const crates = new Set(about.crates.map((c) => `${c.package.name} ${c.package.version}`));
+function jsSection() {
+	const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
+	const lock = JSON.parse(readFileSync(join(root, 'package-lock.json'), 'utf8'));
+	const names = [...new Set([...bundledPackages(), ...Object.keys(pkg.dependencies ?? {})])].sort(cmp);
 	const parts = [
-		`## 3. Núcleo e aplicativo (Rust)\n`,
-		`${crates.size} crates. Quando um crate oferece mais de uma licença à escolha, vale a listada aqui.\n`
+		`## 1. Interface (JavaScript)\n`,
+		`${names.length} pacotes: os que o build coloca na interface e as dependências de execução.\n`
 	];
-	for (const b of blocks) {
-		parts.push(`### ${b.name} (${b.id})\n\nUsada por: ${b.users.join(', ')}.\n\n${fence(b.text)}\n`);
+	for (const name of names) {
+		const dir = join(root, 'node_modules', name);
+		const meta = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+		const license = lock.packages[`node_modules/${name}`]?.license ?? meta.license ?? 'desconhecida';
+		const files = readdirSync(dir)
+			.filter((f) => /^(licen[cs]e|copying|notice)(?!\.spdx$)/i.test(f))
+			.sort(cmp);
+		let body;
+		if (name === 'gsap') {
+			body = fence(readFileSync(join(root, GSAP_LICENSE), 'utf8'));
+		} else if (files.length) {
+			body = files
+				.map((f) => (files.length > 1 ? `\`${f}\`:\n\n` : '') + fence(readFileSync(join(dir, f), 'utf8')))
+				.join('\n\n');
+		} else {
+			const repo = typeof meta.repository === 'string' ? meta.repository : meta.repository?.url;
+			body =
+				`O pacote não traz o texto da licença. Licença declarada: ${license}` +
+				(repo ? `; texto no repositório oficial: ${repo.replace(/^git\+/, '')}` : '') +
+				'.';
+		}
+		parts.push(`### ${name} ${meta.version} (${license})\n\n${body}\n`);
 	}
 	return parts.join('\n');
 }
 
+// ---------------------------------------------------------------- Rust/C
+
+let metadata;
 function cargoPackage(name) {
-	const meta = JSON.parse(
+	metadata ??= JSON.parse(
 		execFileSync('cargo', ['metadata', '--format-version', '1', '--locked'], {
 			cwd: root,
 			maxBuffer: 256 * 1024 * 1024
 		}).toString()
 	);
-	const pkg = meta.packages.find((p) => p.name === name);
+	const pkg = metadata.packages.find((p) => p.name === name);
 	if (!pkg) throw new Error(`${name} ausente do Cargo.lock`);
 	return { version: pkg.version, dir: dirname(pkg.manifest_path) };
 }
@@ -95,44 +124,104 @@ function nativeSection() {
 	].join('\n');
 }
 
-function jsPackages() {
-	const lock = JSON.parse(readFileSync(join(root, 'package-lock.json'), 'utf8'));
-	return Object.entries(lock.packages)
-		.filter(([path, p]) => path.startsWith('node_modules/') && !p.dev && !p.devOptional)
-		.map(([path, p]) => ({ path, name: path.slice(path.lastIndexOf('node_modules/') + 13), ...p }))
-		.sort((a, b) => a.name.localeCompare(b.name));
+// ---------------------------------------------------------------- Android
+
+// Licença por grupo Maven (conferida nos POMs publicados). Grupo novo sem
+// entrada aqui faz o script falhar, para alguém conferir a licença.
+const MAVEN_LICENSES = [
+	[/^androidx\./, 'Apache-2.0', 'Google (AndroidX)'],
+	[/^com\.google\.android\.material$/, 'Apache-2.0', 'Google (Material Components)'],
+	[/^com\.fasterxml\.jackson\./, 'Apache-2.0', 'FasterXML (Jackson)'],
+	[/^org\.jetbrains\.kotlin(x)?$/, 'Apache-2.0', 'JetBrains (Kotlin)']
+];
+
+function gradleDeps(file) {
+	const text = readFileSync(file, 'utf8');
+	return [...text.matchAll(/^\s*(?:implementation|api)\("([^:"]+):([^:"]+):([^:"]+)"\)/gm)].map((m) => ({
+		group: m[1],
+		artifact: m[2],
+		version: m[3]
+	}));
 }
 
-function jsSection() {
-	const parts = [`## 1. Interface (JavaScript)\n`];
-	const pkgs = jsPackages();
-	parts.push(`${pkgs.length} pacotes de execução incluídos na interface.\n`);
-	for (const p of pkgs) {
-		const dir = join(root, p.path);
-		const meta = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
-		const license = p.license ?? meta.license ?? 'desconhecida';
-		const files = readdirSync(dir)
-			.filter((f) => /^(licen[cs]e|copying|notice)(?!\.spdx$)/i.test(f))
-			.sort();
-		let body;
-		if (p.name === 'gsap') {
-			body = fence(readFileSync(join(root, GSAP_LICENSE), 'utf8'));
-		} else if (files.length) {
-			body = files.map((f) => (files.length > 1 ? `\`${f}\`:\n\n` : '') + fence(readFileSync(join(dir, f), 'utf8'))).join('\n\n');
-		} else {
-			const repo = typeof meta.repository === 'string' ? meta.repository : meta.repository?.url;
-			body =
-				`O pacote não traz o texto da licença. Licença declarada: ${license}` +
-				(repo ? `; texto no repositório oficial: ${repo.replace(/^git\+/, '')}` : '') +
-				'.';
+function androidSection() {
+	// Módulos Gradle no APK: app, plugin próprio, runtime tauri-android e os
+	// plugins Tauri que têm parte Android (crates no fechamento do alvo Android).
+	const files = [
+		join(root, 'src-tauri/gen/android/app/build.gradle.kts'),
+		join(root, 'plugins/tauri-plugin-renovador-bg/android/build.gradle.kts')
+	];
+	for (const p of rustFor('aarch64-linux-android')) {
+		const dir = dirname(p.manifest_path);
+		for (const rel of ['android/build.gradle.kts', 'mobile/android/build.gradle.kts']) {
+			if (existsSync(join(dir, rel))) files.push(join(dir, rel));
 		}
-		parts.push(`### ${p.name} ${p.version} (${license})\n\n${body}\n`);
+	}
+	// O Gradle resolve conflitos pela maior versão.
+	const byId = new Map();
+	for (const d of files.flatMap(gradleDeps)) {
+		const id = `${d.group}:${d.artifact}`;
+		const prev = byId.get(id);
+		const newer =
+			!prev ||
+			d.version.localeCompare(prev.version, 'en', { numeric: true, sensitivity: 'base' }) > 0;
+		if (newer) byId.set(id, d);
+	}
+	const rows = [...byId.keys()].sort(cmp).map((id) => {
+		const d = byId.get(id);
+		const lic = MAVEN_LICENSES.find(([re]) => re.test(d.group));
+		if (!lic) throw new Error(`licença desconhecida para ${id}: adicione o grupo em MAVEN_LICENSES`);
+		return `| ${id} | ${d.version} | ${lic[1]} | ${lic[2]} |`;
+	});
+	return [
+		`## 4. Android (bibliotecas Java/Kotlin)\n`,
+		`Só no APK/AAB. Dependências declaradas nos módulos Gradle do app, do plugin de segundo plano, do runtime ` +
+			`\`tauri-android\` e dos plugins do Tauri (o código desses módulos está na seção 3, crates \`tauri\` e ` +
+			`\`tauri-plugin-*\`). As dependências transitivas delas (AndroidX, Kotlin) seguem a mesma licença dos ` +
+			`respectivos grupos. O texto completo da Apache-2.0 está na seção 3.\n`,
+		`| Artefato | Versão | Licença | Autor |\n|---|---|---|---|\n${rows.join('\n')}\n`
+	].join('\n');
+}
+
+function rustSection(about) {
+	// Um bloco por texto de licença distinto, com os crates que o usam.
+	const blocks = about.licenses
+		.map((l) => ({
+			name: l.name,
+			id: l.id,
+			text: norm(l.text).trim(),
+			users: [...new Set(l.used_by.map((u) => `${u.crate.name} ${u.crate.version}`))].sort(cmp)
+		}))
+		.sort((a, b) => cmp(a.id, b.id) || cmp(a.users[0], b.users[0]) || cmp(a.text, b.text));
+	const crates = new Set(about.crates.map((c) => `${c.package.name} ${c.package.version}`));
+	const parts = [
+		`## 3. Núcleo e aplicativo (Rust)\n`,
+		`${crates.size} crates. Quando um crate oferece mais de uma licença à escolha, vale a listada aqui.\n`
+	];
+	for (const b of blocks) {
+		parts.push(`### ${b.name} (${b.id})\n\nUsada por: ${b.users.join(', ')}.\n\n${fence(b.text)}\n`);
 	}
 	return parts.join('\n');
 }
 
+function cargoAbout() {
+	// Saída por arquivo: chamado do PowerShell, o cargo-about recusa escrever no stdout.
+	const dir = mkdtempSync(join(tmpdir(), 'renovador-about-'));
+	const out = join(dir, 'about.json');
+	try {
+		execFileSync(
+			'cargo',
+			// prettier-ignore
+			['about', 'generate', '--format', 'json', '-c', 'about.toml', '-m', 'src-tauri/Cargo.toml', '--locked', '--offline', '--fail', '-o', out],
+			{ cwd: root, stdio: ['ignore', 'ignore', 'inherit'] }
+		);
+		return JSON.parse(readFileSync(out, 'utf8'));
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+}
+
 export function notices() {
-	const about = cargoAbout();
 	return [
 		`# Avisos de terceiros\n`,
 		`<!-- Gerado por \`node scripts/gen-notices.mjs\`. Não edite à mão. -->\n`,
@@ -141,7 +230,8 @@ export function notices() {
 			`pacote não traz o texto).\n`,
 		jsSection(),
 		nativeSection(),
-		rustSection(about)
+		rustSection(cargoAbout()),
+		androidSection()
 	]
 		.join('\n')
 		.replace(/\n{3,}/g, '\n\n')
@@ -151,10 +241,7 @@ export function notices() {
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
 	const check = process.argv.includes('--check');
-	const outputs = [
-		{ path: NOTICES, text: notices() },
-		(({ path, text }) => ({ path, text }))(licensesJson())
-	];
+	const outputs = [{ path: NOTICES, text: notices() }, licensesJson()];
 	let stale = 0;
 	for (const { path, text } of outputs) {
 		const rel = path.slice(root.length + 1).replace(/\\/g, '/');

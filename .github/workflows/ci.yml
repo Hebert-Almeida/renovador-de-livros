@@ -144,7 +144,7 @@ jobs:
         with:
           cache-bin: true
       - name: cargo-about
-        run: cargo about --version 2>/dev/null || cargo install cargo-about --locked --version 0.9.3 --features cli
+        run: cargo about --version 2>/dev/null | grep -qx 'cargo-about 0.9.3' || cargo install cargo-about --locked --version 0.9.3 --features cli
       - name: cargo fetch
         run: cargo fetch --locked
       - uses: actions/setup-node@v4

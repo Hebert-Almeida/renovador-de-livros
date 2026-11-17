@@ -84,7 +84,7 @@ cargo install cargo-about --locked --version 0.9.3 --features cli   # uma vez
 node scripts/gen-notices.mjs
 ```
 
-O script também regrava `src/lib/features/sobre/licenses.generated.json`. O CI (job "avisos de terceiros") falha se algum dos dois estiver desatualizado. A licença do GSAP não vem no pacote npm: a cópia oficial fica em [legal/licenca-gsap.txt](legal/licenca-gsap.txt). Se a Webflow mudar os termos (https://gsap.com/standard-license), atualize o arquivo e confira se o uso continua permitido.
+O script faz um build do Vite para saber quais pacotes npm entram de fato na interface (inclusive o runtime do Svelte/SvelteKit) e lista as bibliotecas Maven dos módulos Android. Ele também regrava `src/lib/features/sobre/licenses.generated.json`. Um grupo Maven novo faz o script falhar até ser cadastrado, com a licença conferida, em `MAVEN_LICENSES`. O CI (job "avisos de terceiros") falha se algum dos dois estiver desatualizado. A licença do GSAP não vem no pacote npm: a cópia oficial fica em [legal/licenca-gsap.txt](legal/licenca-gsap.txt). Se a Webflow mudar os termos (https://gsap.com/standard-license), atualize o arquivo e confira se o uso continua permitido.
 
 ### 4.2 Keystore do Android
 
@@ -111,7 +111,9 @@ Os instaladores de Windows e macOS saem **sem assinatura**: o Windows mostra o a
 
 ### 4.4 Versão
 
-A versão fica em `src-tauri/tauri.conf.json` (`version`) e em `package.json`. O MSI só aceita números (`maior.menor.patch.build`), então `bundle.windows.wix.version` precisa acompanhar: `2.0.0-alpha.0` → `2.0.0.0`; `2.0.1` → `2.0.1.0`. O versionCode do Android é derivado da versão pelo Tauri.
+A versão fica em `src-tauri/tauri.conf.json` (`version`) e em `package.json`. O MSI só aceita números (`maior.menor.patch.build`), então `bundle.windows.wix.version` precisa acompanhar: `2.0.0-alpha.0` → `2.0.0.0`; `2.0.1` → `2.0.1.0`. Use o quarto número para distinguir pré-versões (`2.0.0-alpha.1` → `2.0.0.1`); o instalador MSI do Tauri aceita reinstalar a mesma versão, então a atualização funciona de qualquer forma.
+
+O `versionCode` do Android é calculado pelo Tauri como `maior × 1.000.000 + menor × 1.000 + patch` e **ignora a pré-versão**: `2.0.0-alpha.0` e `2.0.0-alpha.1` dão o mesmo 2000000. Instalar o APK por cima funciona, mas a Play Store recusa um AAB com `versionCode` repetido. Antes de enviar uma pré-versão à loja, defina `bundle.android.versionCode` em `tauri.conf.json` com um número maior que o último enviado e menor que o da versão final (por exemplo 1999001, 1999002…), e remova o campo na versão final.
 
 ## 5. Checklist de release
 
