@@ -16,5 +16,5 @@ const withId = (rows: Raw[]): ThirdPartyLicense[] => rows.map((r) => ({ id: `${r
 
 /** Dependências JavaScript de execução (package.json › dependencies). */
 export const jsLicenses: ThirdPartyLicense[] = withId(data.js);
-/** Crates Rust que vão no binário (Windows e Android). */
+/** Crates Rust que vão no binário (Windows, Linux, macOS e Android). */
 export const rustLicenses: ThirdPartyLicense[] = withId(data.rust);

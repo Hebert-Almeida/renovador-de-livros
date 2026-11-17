@@ -2,7 +2,7 @@
 // Gera src/lib/features/sobre/licenses.generated.json a partir dos lockfiles.
 // JS: dependências de execução do package.json, versão e licença do package-lock.json.
 // Rust: fechamento transitivo das dependências normais do app (cargo metadata),
-// só nos alvos distribuídos (Windows e Android).
+// só nos alvos distribuídos (Windows, Linux, macOS e Android; os mesmos do about.toml).
 // Uso: node scripts/gen-licenses.mjs   (rodar após mudar dependências)
 import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -26,7 +26,16 @@ export function jsLicenses(pkg, lock) {
 		});
 }
 
-const TARGETS = ['x86_64-pc-windows-msvc', 'aarch64-linux-android', 'armv7-linux-androideabi', 'x86_64-linux-android'];
+export const TARGETS = [
+	'x86_64-pc-windows-msvc',
+	'x86_64-unknown-linux-gnu',
+	'aarch64-apple-darwin',
+	'x86_64-apple-darwin',
+	'aarch64-linux-android',
+	'armv7-linux-androideabi',
+	'i686-linux-android',
+	'x86_64-linux-android'
+];
 
 function rustFor(target) {
 	const meta = JSON.parse(
@@ -54,7 +63,7 @@ function rustFor(target) {
 	return [...seen].filter((id) => !workspace.has(id)).map((id) => pkgs.get(id));
 }
 
-function rustLicenses() {
+export function rustLicenses() {
 	const all = new Map();
 	for (const target of TARGETS) {
 		for (const p of rustFor(target)) all.set(`${p.name}@${p.version}`, p);
@@ -68,10 +77,16 @@ function rustLicenses() {
 		.sort((a, b) => a.name.localeCompare(b.name) || a.version.localeCompare(b.version));
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+/** Conteúdo de licenses.generated.json (tela Sobre). */
+export function licensesJson() {
 	const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
 	const lock = JSON.parse(readFileSync(join(root, 'package-lock.json'), 'utf8'));
 	const data = { js: jsLicenses(pkg, lock), rust: rustLicenses() };
-	writeFileSync(out, JSON.stringify(data, null, '\t') + '\n');
+	return { path: out, text: JSON.stringify(data, null, 2) + '\n', data };
+}
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+	const { text, data } = licensesJson();
+	writeFileSync(out, text);
 	console.log(`licenças: ${data.js.length} JS, ${data.rust.length} Rust`);
 }
