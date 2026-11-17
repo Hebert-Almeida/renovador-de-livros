@@ -63,12 +63,8 @@ jobs:
       - name: cargo clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
 
-      # Testes de lib do src-tauri falham no Windows (STATUS_ENTRYPOINT_NOT_FOUND).
-      - name: cargo test (Windows)
-        if: runner.os == 'Windows'
-        run: cargo test -p renovador-core
+      # No Windows, src-tauri/build.rs embute o manifesto também nos testes.
       - name: cargo test
-        if: runner.os != 'Windows'
         run: cargo test --workspace
 
       - name: npm run check
@@ -136,3 +132,26 @@ jobs:
       # Licenças npm: GSAP usa a "Standard No Charge License" (não OSI) — exceção aceita,
       # documentada em docs/PLANO-V2.md; por isso não há checagem automática de licença no npm.
       - run: npm audit --omit=dev --audit-level=high
+
+  notices:
+    name: avisos de terceiros
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain Rust
+        run: rustup show
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-bin: true
+      - name: cargo-about
+        run: cargo about --version 2>/dev/null | grep -qx 'cargo-about 0.9.3' || cargo install cargo-about --locked --version 0.9.3 --features cli
+      - name: cargo fetch
+        run: cargo fetch --locked
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Mudou Cargo.lock ou package-lock.json? Rode `node scripts/gen-notices.mjs` e commite.
+      - name: THIRD-PARTY-NOTICES.md e licenças da tela Sobre atualizados
+        run: node scripts/gen-notices.mjs --check

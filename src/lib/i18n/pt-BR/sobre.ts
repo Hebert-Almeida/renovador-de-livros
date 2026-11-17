@@ -47,8 +47,8 @@ export default {
 		versionCol: 'Versão',
 		license: 'Licença',
 		rustSummary: (n: number) => `Bibliotecas Rust do núcleo (${n})`,
-		rustCaption: 'Bibliotecas Rust compiladas no app (Windows e Android)',
-		note: 'Listas geradas a partir de package-lock.json e Cargo.lock; as licenças Rust também são verificadas pelo cargo-deny.'
+		rustCaption: 'Bibliotecas Rust compiladas no app (desktop e Android)',
+		note: 'Listas geradas a partir de package-lock.json e Cargo.lock; as licenças Rust também são verificadas pelo cargo-deny. Os textos completos estão em THIRD-PARTY-NOTICES.md, instalado junto com o app.'
 	},
 	diagnostics: {
 		heading: 'Diagnóstico',

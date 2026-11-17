@@ -306,7 +306,7 @@ Desvios e convenções descobertos ao montar a fundação:
 - **SvelteKit 3**: `$lib` foi removido. Use `#lib/...` (campo `imports` do `package.json`) **com extensão explícita**: `#lib/routes.ts`, `#lib/motion/index.ts`, `#lib/components/Button.svelte`.
 - **`Id` é `i32`** (não `i64`): o `specta-typescript` recusa `i64`. O `Store` converte os rowids do SQLite.
 - **Sem `rusqlite_migration`** (incompatível com rusqlite 0.42): o `Store` aplica `store::MIGRATIONS` via `PRAGMA user_version`.
-- **Bindings**: `cargo run -p renovador --bin export-bindings` regenera `src/lib/ipc/bindings.ts` (também roda no `tauri dev`). Testes de lib do `src-tauri` não rodam no Windows (STATUS_ENTRYPOINT_NOT_FOUND); teste os comandos via `renovador-core` ou binários.
+- **Bindings**: `cargo run -p renovador --example export-bindings` regenera `src/lib/ipc/bindings.ts` (também roda no `tauri dev`). Os testes do `src-tauri` rodavam só fora do Windows (STATUS_ENTRYPOINT_NOT_FOUND); desde a Onda 3, o `build.rs` embute o manifesto em todos os alvos e `cargo test --workspace` roda também no Windows.
 - **Parâmetros dos comandos** não podem ter prefixo `_`: o nome vira a chave do IPC.
 - **Eventos** no frontend: `cycleProgressEvent`, `cycleFinishedEvent`, `automationStateEvent` (equivalem a `cycle://progress`, `cycle://finished`, `automation://state`).
 - **Windows**: rode `vitest` num terminal cujo caminho comece com `C:\` maiúsculo; com `c:\` o Vitest carrega duas cópias e todo teste falha. O build do SQLCipher precisa do Strawberry Perl antes do perl do Git no `PATH` (`C:\Strawberry\perl\bin`).

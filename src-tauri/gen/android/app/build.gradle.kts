@@ -14,8 +14,29 @@ val tauriProperties = Properties().apply {
     }
 }
 
+// Assinatura de release: a keystore da Editora fica fora do repositório.
+// O workflow de release grava `keystore.properties` (ignorado pelo git) a
+// partir dos secrets; sem ele, o build de release sai sem assinatura.
+val keystoreProperties = Properties().apply {
+    val propFile = rootProject.file("keystore.properties")
+    if (propFile.exists()) {
+        propFile.inputStream().use { load(it) }
+    }
+}
+val hasReleaseKey = keystoreProperties.getProperty("storeFile") != null
+
 android {
     compileSdk = 37
+    if (hasReleaseKey) {
+        signingConfigs {
+            create("release") {
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("password")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("password")
+            }
+        }
+    }
     namespace = "br.edu.uftm.editora.renovador"
     defaultConfig {
         manifestPlaceholders["usesCleartextTraffic"] = "false"
@@ -39,6 +60,9 @@ android {
             }
         }
         getByName("release") {
+            if (hasReleaseKey) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             optimization {
                enable = true
             }

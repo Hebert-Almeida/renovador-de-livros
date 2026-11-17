@@ -62,9 +62,75 @@ Não altere o arquivo depois de assinar: qualquer byte diferente invalida a assi
 3. Depois que as instalações atualizarem, passe a assinar só com a nova chave e destrua a antiga.
 4. Se a chave privada vazar, rotacione imediatamente: uma chave vazada permite publicar uma política, mas como a política só aperta, o pior caso é desligar a automação.
 
-## 4. Checklist de release
+## 4. Empacotamento
 
-- [ ] Anuência por escrito da Biblioteca/SIBi UFTM arquivada ([análise preliminar](legal/analise-preliminar.md)).
-- [ ] `cargo test --workspace`, `npm run check`, `npm run test` e `npm run build` passam.
-- [ ] `THIRD-PARTY-NOTICES.md` atualizado (incluindo a licença do GSAP).
-- [ ] Release em rascunho aprovada no environment `publicacao`.
+O workflow **Release** (`.github/workflows/release.yml`, só disparo manual) gera uma release **em rascunho** com:
+
+| Plataforma | Arquivos | Observação |
+|---|---|---|
+| Windows | instalador NSIS (`-setup.exe`) e MSI | instala só para o usuário (sem admin); pt-BR |
+| Linux | AppImage, `.deb` e `.rpm` | WebKitGTK 4.1 |
+| macOS | `.dmg` universal (Intel + Apple Silicon) | sem assinatura Apple (ver 4.3) |
+| Android | APK e AAB assinados + `SHA256SUMS-android.txt` | exige a keystore (4.2) |
+
+Antes de compilar, o job `pré-checagens` confere que `THIRD-PARTY-NOTICES.md` e a lista da tela Sobre batem com os lockfiles e que a versão do MSI acompanha a do app.
+
+### 4.1 Avisos de terceiros
+
+`THIRD-PARTY-NOTICES.md` vai dentro de todos os instaladores. Sempre que mudar `Cargo.lock` ou `package-lock.json`:
+
+```sh
+cargo install cargo-about --locked --version 0.9.3 --features cli   # uma vez
+node scripts/gen-notices.mjs
+```
+
+O script faz um build do Vite para saber quais pacotes npm entram de fato na interface (inclusive o runtime do Svelte/SvelteKit) e lista as bibliotecas Maven dos módulos Android. Ele também regrava `src/lib/features/sobre/licenses.generated.json`. Um grupo Maven novo faz o script falhar até ser cadastrado, com a licença conferida, em `MAVEN_LICENSES`. O CI (job "avisos de terceiros") falha se algum dos dois estiver desatualizado. A licença do GSAP não vem no pacote npm: a cópia oficial fica em [legal/licenca-gsap.txt](legal/licenca-gsap.txt). Se a Webflow mudar os termos (https://gsap.com/standard-license), atualize o arquivo e confira se o uso continua permitido.
+
+### 4.2 Keystore do Android
+
+Gerada uma única vez pela Editora, numa máquina confiável, e guardada **fora do repositório** (cofre de senhas + cópia offline). Perder a keystore impede atualizar o app já instalado nos aparelhos.
+
+```sh
+keytool -genkey -v -keystore renovador-release.jks -storetype PKCS12 -keyalg RSA -keysize 2048 -validity 10000 -alias renovador
+base64 -w0 renovador-release.jks > renovador-release.jks.b64
+```
+
+Cadastre no environment `publicacao` (Settings › Environments) os secrets:
+
+- `ANDROID_KEYSTORE_BASE64`: conteúdo de `renovador-release.jks.b64`;
+- `ANDROID_KEY_ALIAS`: `renovador` (ou o alias escolhido);
+- `ANDROID_KEY_PASSWORD`: a senha da keystore (a mesma da chave).
+
+Apague o `.b64` depois. O workflow grava a keystore só no diretório temporário do runner e a apaga no fim. Sem os três secrets, o job Android falha com uma mensagem explicando o que falta.
+
+Para gerar localmente um build assinado, crie `src-tauri/gen/android/keystore.properties` (ignorado pelo git) com `storeFile=<caminho absoluto>`, `keyAlias=...` e `password=...`. Sem esse arquivo, `tauri android build` sai sem assinatura.
+
+### 4.3 Assinatura de código (desktop)
+
+Os instaladores de Windows e macOS saem **sem assinatura**: o Windows mostra o aviso do SmartScreen e o macOS exige "Abrir mesmo assim" em Ajustes › Privacidade e Segurança. Para assinar é preciso um certificado de assinatura de código (Windows) e uma conta Apple Developer (macOS); ver https://v2.tauri.app/distribute/sign/windows/ e https://v2.tauri.app/distribute/sign/macos/.
+
+### 4.4 Versão
+
+A versão fica em `src-tauri/tauri.conf.json` (`version`) e em `package.json`. O MSI só aceita números (`maior.menor.patch.build`), então `bundle.windows.wix.version` precisa acompanhar: `2.0.0-alpha.0` → `2.0.0.0`; `2.0.1` → `2.0.1.0`. Use o quarto número para distinguir pré-versões (`2.0.0-alpha.1` → `2.0.0.1`); o instalador MSI do Tauri aceita reinstalar a mesma versão, então a atualização funciona de qualquer forma.
+
+O `versionCode` do Android é calculado pelo Tauri como `maior × 1.000.000 + menor × 1.000 + patch` e **ignora a pré-versão**: `2.0.0-alpha.0` e `2.0.0-alpha.1` dão o mesmo 2000000. Instalar o APK por cima funciona, mas a Play Store recusa um AAB com `versionCode` repetido. Antes de enviar uma pré-versão à loja, defina `bundle.android.versionCode` em `tauri.conf.json` com um número maior que o último enviado e menor que o da versão final (por exemplo 1999001, 1999002…), e remova o campo na versão final.
+
+## 5. Checklist de release
+
+Antes de disparar:
+
+- [ ] Anuência por escrito da Biblioteca/SIBi UFTM arquivada ([análise preliminar](legal/analise-preliminar.md), [modelo de ofício](legal/modelo-oficio-anuencia.md)).
+- [ ] Titularidade e licença confirmadas com a Editora/NIT; `publisher` e `copyright` em `tauri.conf.json` atualizados se mudar o titular.
+- [ ] Par de chaves Ed25519 da política gerado (3.1), chave pública embutida no núcleo e `policy.json` assinado publicado.
+- [ ] Versão atualizada em `tauri.conf.json`, `package.json` e `bundle.windows.wix.version` (4.4).
+- [ ] CI verde em `main`: fmt, clippy, testes Rust, `npm run check`, Vitest, Android debug, cargo-deny, npm audit e avisos de terceiros.
+- [ ] Testes de tela (Playwright + axe) passando localmente.
+- [ ] Teste manual com conta real (seção 10 do plano): Windows e um Android físico — renovar 1 livro, conferir no site e no e-mail do Sophia; reiniciar no meio da sessão (cota persiste); cortar a rede (breaker abre); Android em Doze e modo avião.
+- [ ] Manual do usuário revisado para a versão.
+
+Disparar e revisar:
+
+- [ ] Actions › Release › Run workflow; aprovar no environment `publicacao`.
+- [ ] Na release em rascunho: baixar e instalar cada arquivo (Windows NSIS e MSI, um Linux, APK num aparelho); conferir a versão em Sobre e que `THIRD-PARTY-NOTICES.md` está instalado.
+- [ ] Conferir os hashes de `SHA256SUMS-android.txt`.
+- [ ] Escrever as notas da versão (o que mudou, problemas conhecidos) e só então publicar a release.

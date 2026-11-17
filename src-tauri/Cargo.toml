@@ -11,9 +11,11 @@ repository.workspace = true
 name = "renovador"
 path = "src/main.rs"
 
-[[bin]]
+# Ferramenta de desenvolvimento: como `example`, não entra nos instaladores
+# (o bundler do Tauri empacota todo `[[bin]]` do pacote).
+[[example]]
 name = "export-bindings"
-path = "src/bin/export-bindings.rs"
+path = "examples/export-bindings.rs"
 
 [lib]
 name = "renovador_lib"
