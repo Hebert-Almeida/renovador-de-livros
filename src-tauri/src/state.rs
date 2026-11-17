@@ -10,7 +10,7 @@ use std::sync::{Arc, RwLock};
 
 use chrono::{DateTime, Duration, Utc};
 use renovador_core::clock::{Clock, SystemClock};
-use renovador_core::engine::Engine;
+use renovador_core::engine::{CycleOutcome, Engine};
 use renovador_core::guard::{
     DefaultGate, RemotePolicy, RequestGate, check_account_count, validate_library_url,
 };
@@ -236,6 +236,12 @@ impl AppState {
         Ok(self.services()?.store)
     }
 
+    /// Acesso ao banco para o segundo plano (bandeja, scheduler, notificações);
+    /// `None` enquanto o banco não foi aberto.
+    pub fn with_store<T>(&self, f: impl FnOnce(&Store) -> T) -> Option<T> {
+        self.store().ok().map(|s| f(&s))
+    }
+
     fn now(&self) -> Result<DateTime<Utc>> {
         self.inner
             .read()
@@ -396,7 +402,21 @@ impl AppState {
     // --- Execução e cota ---
 
     /// Roda um ciclo manual. O progresso vai para o `ProgressSink`.
+    /// "Sincronizar agora" da interface: sempre conta como manual.
     pub async fn cycle_run_now(&self, account_id: Id, kind: CycleKind) -> Result<CycleReport> {
+        self.run_cycle(account_id, kind, Trigger::Manual)
+            .await
+            .map(|o| o.report)
+    }
+
+    /// Ciclo com o gatilho real (o scheduler passa `Auto`/`CatchUp`, que não
+    /// gastam a cota manual) e o resultado completo, com as notificações.
+    pub async fn run_cycle(
+        &self,
+        account_id: Id,
+        kind: CycleKind,
+        trigger: Trigger,
+    ) -> Result<CycleOutcome> {
         let s = self.services()?;
         s.store.account_get(account_id)?;
         let sink = self
@@ -410,7 +430,7 @@ impl AppState {
             }
         };
         s.engine
-            .run_cycle(&s.store, account_id, kind, Trigger::Manual, &progress)
+            .run_cycle_outcome(&s.store, account_id, kind, trigger, None, &progress)
             .await
     }
 

@@ -76,11 +76,7 @@ pub fn run() {
     {
         app = app
             .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
-                use tauri::Manager;
-                if let Some(w) = app.get_webview_window("main") {
-                    let _ = w.show();
-                    let _ = w.set_focus();
-                }
+                tray::show_main(app);
             }))
             .plugin(tauri_plugin_autostart::init(
                 tauri_plugin_autostart::MacosLauncher::LaunchAgent,
@@ -110,6 +106,10 @@ pub fn run() {
             scheduler::start(app.handle().clone());
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("erro ao iniciar o Renovador de Livros");
+        .build(tauri::generate_context!())
+        .expect("erro ao iniciar o Renovador de Livros")
+        .run(|_app, _event| {
+            #[cfg(desktop)]
+            tray::on_run_event(_app, &_event);
+        });
 }
