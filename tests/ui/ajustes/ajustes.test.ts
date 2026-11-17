@@ -12,7 +12,9 @@ const base = {
 	autostart: false,
 	app_lock: false,
 	onboarding_done: true,
-	privacy_accepted_at: null
+	privacy_accepted_at: null,
+	renew_period: 'auto',
+	automation_paused: false
 };
 
 let current: Record<string, unknown>;
@@ -85,6 +87,16 @@ describe('/ajustes', () => {
 		await fireEvent.change(sel, { target: { value: 'contrast' } });
 		await waitFor(() => expect(current.theme).toBe('contrast'));
 		expect(document.documentElement.dataset.theme).toBe('contrast');
+	});
+
+	it('escolhe o período da renovação automática', async () => {
+		render(Page);
+		const sel = (await screen.findByLabelText('Período da renovação automática')) as HTMLSelectElement;
+		expect(sel.value).toBe('auto');
+		await fireEvent.change(sel, { target: { value: 'evening' } });
+		await waitFor(() => expect(current.renew_period).toBe('evening'));
+		const set = calls.find((c) => c.cmd === 'settings_set');
+		expect(set?.args.patch).toEqual({ renew_period: 'evening' });
 	});
 
 	it('alterna iniciar com o sistema', async () => {

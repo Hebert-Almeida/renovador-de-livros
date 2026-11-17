@@ -60,11 +60,14 @@ for (const tema of ['light', 'dark', 'contrast'] as const) {
 		await open(page);
 		await page.getByLabel('Tema', { exact: true }).selectOption(tema);
 		await expect(page.locator('html')).toHaveAttribute('data-theme', tema);
-		expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+		// A troca de tema anima as cores: o axe mede a cor computada e um quadro
+		// intermediário dá falso positivo. Repete até estabilizar (violação real persiste).
+		const axe = async () => (await new AxeBuilder({ page }).analyze()).violations;
+		await expect.poll(axe, { timeout: 10_000 }).toEqual([]);
 
 		await page.getByRole('button', { name: 'Apagar tudo…' }).click();
 		await expect(page.getByRole('dialog')).toBeVisible();
-		expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+		await expect.poll(axe, { timeout: 10_000 }).toEqual([]);
 	});
 }
 
@@ -102,7 +105,11 @@ test('fluxo completo só por teclado', async ({ page }) => {
 	await page.keyboard.press('Escape');
 	await expect(page.getByRole('dialog')).toBeHidden();
 	await expect(wipe).toBeFocused();
-	await page.keyboard.press('Enter');
+	// Reabre só depois de o diálogo anterior ter fechado de vez.
+	await expect(async () => {
+		await page.keyboard.press('Enter');
+		await expect(page.getByRole('dialog')).toBeVisible({ timeout: 1000 });
+	}).toPass({ timeout: 10_000 });
 	await page.getByLabel('Digite APAGAR para confirmar').focus();
 	await page.keyboard.type('APAGAR');
 	await page.keyboard.press('Tab'); // Cancelar

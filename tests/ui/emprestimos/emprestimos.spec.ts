@@ -141,7 +141,11 @@ test('fluxo completo só por teclado', async ({ page }) => {
 	await page.keyboard.press('Escape');
 	await expect(page.getByRole('dialog')).toBeHidden();
 	await expect(devolver).toBeFocused();
-	await page.keyboard.press('Enter');
+	// Reabre só depois de o diálogo anterior ter fechado de vez.
+	await expect(async () => {
+		await page.keyboard.press('Enter');
+		await expect(page.getByRole('dialog')).toBeVisible({ timeout: 1000 });
+	}).toPass({ timeout: 10_000 });
 	await page.getByRole('button', { name: 'Confirmar' }).focus();
 	await page.keyboard.press('Enter');
 	await expect(page.getByRole('status').filter({ hasText: 'Empréstimo marcado como devolvido.' })).toBeVisible();

@@ -79,8 +79,11 @@ pub struct PlanInput<'a> {
     pub existing: &'a [Schedule],
     /// Semente fixa por instalação (minuto aleatório na janela 07h–21h).
     pub install_seed: u64,
-    /// Período da renovação e antecedência do lembrete (Ajustes).
+    /// Período da renovação (Ajustes).
     pub prefs: Prefs,
+    /// Empréstimos com tentativa de renovação hoje (dia local). A renovação
+    /// pendente deles (ex.: nova tentativa por falha de rede) não é trocada.
+    pub attempted_today: &'a [Id],
 }
 
 /// O que deve ser criado/alterado na agenda.
@@ -156,16 +159,26 @@ pub fn plan(input: &PlanInput<'_>) -> Result<Plan> {
     }
 
     for s in input.existing.iter().filter(system_pending) {
-        let still_wanted = wanted
-            .iter()
-            .any(|&(k, l, at)| k == s.kind && l == s.loan_id && same_slot(k, s.run_at, at));
+        let still_wanted = wanted.iter().any(|&(k, l, at)| {
+            k == s.kind
+                && l == s.loan_id
+                && (sticky(input, k, l) || same_slot(k, s.run_at, at, now, input.prefs.period))
+        });
         if !still_wanted {
             out.cancel.push(s.id);
         }
     }
 
     for (kind, loan_id, run_at) in wanted {
-        if is_covered(input.existing, kind, loan_id, run_at) {
+        if is_covered(
+            input.existing,
+            kind,
+            loan_id,
+            run_at,
+            now,
+            input.prefs.period,
+            sticky(input, kind, loan_id),
+        ) {
             continue;
         }
         out.create.push(Schedule {
@@ -184,11 +197,42 @@ pub fn plan(input: &PlanInput<'_>) -> Result<Plan> {
 
 /// Dois horários representam o mesmo agendamento? Renovação/sincronização: um por
 /// empréstimo/conta; lembretes: um por dia local.
-fn same_slot(kind: ScheduleKind, a: DateTime<Utc>, b: DateTime<Utc>) -> bool {
+/// `existing` (pendente) cobre o horário desejado `wanted`?
+///
+/// - Lembrete: mesmo dia local.
+/// - Renovação: mesmo dia local e, se ainda não venceu, dentro do período dos Ajustes.
+///   Um pendente já vencido fica (o catch-up recalcula `wanted` a cada execução e
+///   não deve gerar troca de agendamento); mudar a antecedência ou o período move a
+///   renovação para o dia/período novos.
+/// - Sincronização: qualquer pendente cobre.
+fn same_slot(
+    kind: ScheduleKind,
+    existing: DateTime<Utc>,
+    wanted: DateTime<Utc>,
+    now: DateTime<Utc>,
+    period: RenewPeriod,
+) -> bool {
     match kind {
-        ScheduleKind::Remind => local_date(a) == local_date(b),
-        ScheduleKind::Renew | ScheduleKind::Sync => true,
+        ScheduleKind::Remind => local_date(existing) == local_date(wanted),
+        ScheduleKind::Renew => {
+            local_date(existing) == local_date(wanted)
+                && (existing <= now || in_period(existing, period))
+        }
+        ScheduleKind::Sync => true,
     }
+}
+
+/// Renovação de um empréstimo que já teve tentativa hoje: qualquer pendente vale.
+fn sticky(input: &PlanInput<'_>, kind: ScheduleKind, loan_id: Option<Id>) -> bool {
+    kind == ScheduleKind::Renew && loan_id.is_some_and(|id| input.attempted_today.contains(&id))
+}
+
+/// O instante (hora local) está dentro do período?
+fn in_period(at: DateTime<Utc>, period: RenewPeriod) -> bool {
+    let local = at.with_timezone(&TZ);
+    let minutes = (local.hour() * 60 + local.minute()) as i64 - i64::from(WINDOW_START_HOUR * 60);
+    let (start, end) = period_bounds(period);
+    (i64::from(start)..i64::from(end)).contains(&minutes)
 }
 
 /// `true` se um agendamento existente já cobre (ou bloqueia) o desejado.
@@ -197,6 +241,9 @@ fn is_covered(
     kind: ScheduleKind,
     loan_id: Option<Id>,
     run_at: DateTime<Utc>,
+    now: DateTime<Utc>,
+    period: RenewPeriod,
+    sticky: bool,
 ) -> bool {
     existing
         .iter()
@@ -206,7 +253,9 @@ fn is_covered(
             (ScheduleOrigin::User, ScheduleStatus::Paused | ScheduleStatus::Cancelled) => true,
             // Um pendente (do usuário ou do sistema) já cobre o mesmo slot.
             (ScheduleOrigin::User, ScheduleStatus::Pending) => true,
-            (_, ScheduleStatus::Pending) => same_slot(kind, s.run_at, run_at),
+            (_, ScheduleStatus::Pending) => {
+                sticky || same_slot(kind, s.run_at, run_at, now, period)
+            }
             // Já executado no mesmo dia local: não repetir.
             (_, ScheduleStatus::Done | ScheduleStatus::Failed) => {
                 local_date(s.run_at) == local_date(run_at)

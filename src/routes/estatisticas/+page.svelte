@@ -61,8 +61,8 @@
 		untrack(() => load(p));
 	});
 
-	/** O backend manda 0.0 (não null) quando não há tentativas: sem tentativa, não há taxa. */
-	const successRate = $derived(overview && overview.renewals_total > 0 ? overview.success_rate : null);
+	/** Sem tentativas no período o backend manda `null`: não há taxa a mostrar. */
+	const successRate = $derived(overview?.success_rate ?? null);
 	const renewed = $derived(monthly.reduce((sum, m) => sum + m.successes, 0));
 
 	type Row = { month: string; label: string; renewals: number; successes: number; failures: number; rate: string };

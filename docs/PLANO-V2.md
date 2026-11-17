@@ -482,14 +482,19 @@ Todos os caminhos de `crates/...` abaixo são relativos a `crates/renovador-core
 
 ### Pendências herdadas da Onda 2
 
-Lacunas encontradas na revisão da Onda 2 e adiadas por decisão do mantenedor. Fechá-las exige mudar contratos congelados (`model.rs`, `commands.rs`, `bindings.ts`), por isso ficaram fora das unidades:
+Lacunas encontradas na revisão da Onda 2. As que mudavam contratos congelados foram feitas na Onda 3 (branch `onda3/pendencias`), com o motivo explicado no PR.
 
-- **Antecedência e horário nos Ajustes** (`/ajustes`, #19): o tipo `Settings` não tem esses campos, então a tela não os oferece. Acrescentá-los ao `Settings` e ao IPC, e ligá-los ao planner e à tela.
-- **Renovar um empréstimo só** (`/emprestimos/[id]`, #22): não há comando para isso. O "Renovar agora" da ficha roda o ciclo `renew_due` da conta e só renova o livro se ele estiver na janela de vencimento. Acrescentar o comando, passando pelo `RequestGate`, e trocar a ação da ficha.
+Resolvidas:
+- **Horário nos Ajustes** (#19): `Settings.renew_period` (qualquer hora, manhã, tarde ou noite). O minuto continua sorteado dentro do período, e mudar o período replaneja a agenda sem acessar a rede.
+- **Antecedências** (#19): ficam por conta, em `/contas` (`renew_days_before` 0–3, `remind_days_before` 0–7, padrão 1 e 2). O planner passou a usar o lembrete da conta, que antes ignorava, preso em D−2.
+- **Renovar um empréstimo só** (#22): comando `loan_renew(loan_id)` (`Engine::renew_loan`), com o mesmo gate e a mesma cota de um ciclo manual.
+- **Estatísticas no fuso local** (#25): intervalo e meses no fuso de Brasília; `success_rate` é `Option<f64>`.
+- **Pausa da bandeja** (#26): `Settings.automation_paused`, lida ao iniciar e mostrada no `app_status`.
+
+Ainda abertas:
 - **Parser real (W1-06)**: os testes do engine usam parsers falsos; ligar os reais assim que existirem os fixtures da P3.
-- **Estatísticas no fuso local** (#25): o store agrupa os meses por `substr(attempted_at, 1, 7)`, em UTC, então uma renovação às 21h30 do último dia do mês em São Paulo cai no mês seguinte. O `StatsOverview.success_rate` também deveria ser `Option<f64>`: hoje a tela trata `renewals_total == 0` como "sem taxa". As duas correções mexem no store e em `model.rs`.
-- **Pausa da bandeja** (#26): hoje fica só em memória e se perde ao reiniciar; persistir em `settings`.
 - **Teste manual do segundo plano no Windows** (#26): seguir o roteiro do PR (bandeja, autostart, instância única, catch-up e notificações).
+- **Teste do Android** (#29): rodar o APK do CI num aparelho ou emulador. Neste PC a virtualização está desligada no firmware, e o emulador x86_64 não sobe.
 - **Documentar no manual**: quando a renovação volta `Reserved`, `LimitReached`, `Blocked` ou `Overdue`, o engine desliga o `auto_renew` daquele empréstimo, e o usuário religa pela ficha.
 
 ## 10. Verificação end-to-end

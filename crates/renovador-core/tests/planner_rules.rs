@@ -94,6 +94,7 @@ fn run(now: DateTime<Utc>, acc: &Account, loans: &[LoanView], existing: &[Schedu
         existing,
         install_seed: SEED,
         prefs: Prefs::default(),
+        attempted_today: &[],
     })
     .unwrap()
 }
@@ -513,6 +514,7 @@ fn foreign_schedule_is_rejected() {
         existing: &[s],
         install_seed: SEED,
         prefs: Prefs::default(),
+        attempted_today: &[],
     });
     assert!(r.is_err());
 }
@@ -534,6 +536,7 @@ fn run_with(now: DateTime<Utc>, acc: &Account, loans: &[LoanView], prefs: Prefs)
         existing: &[],
         install_seed: SEED,
         prefs,
+        attempted_today: &[],
     })
     .unwrap()
 }

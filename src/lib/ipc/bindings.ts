@@ -23,6 +23,11 @@ export const commands = {
 	loanSetAutoRenew: (id: number, on: boolean, options?: InvokeOptions) => __TAURI_INVOKE<null>("loan_set_auto_renew", { id, on }, options),
 	loanMarkReturned: (id: number, options?: InvokeOptions) => __TAURI_INVOKE<null>("loan_mark_returned", { id }, options),
 	cycleRunNow: (accountId: number, kind: CycleKind, options?: InvokeOptions) => __TAURI_INVOKE<CycleReport_Serialize>("cycle_run_now", { accountId, kind }, options),
+	/**
+	 *  "Renovar agora" de um empréstimo (Onda 3): renova só esse livro, mesmo fora
+	 *  da janela de vencimento, com o mesmo gate e cota de um ciclo manual.
+	 */
+	loanRenew: (loanId: number, options?: InvokeOptions) => __TAURI_INVOKE<CycleReport_Serialize>("loan_renew", { loanId }, options),
 	quotaStatus: (accountId: number, options?: InvokeOptions) => __TAURI_INVOKE<QuotaStatus_Serialize>("quota_status", { accountId }, options),
 	scheduleList: (filter: ScheduleFilter_Deserialize, options?: InvokeOptions) => __TAURI_INVOKE<Schedule_Serialize[]>("schedule_list", { filter }, options),
 	scheduleCancel: (id: number, options?: InvokeOptions) => __TAURI_INVOKE<Schedule_Serialize>("schedule_cancel", { id }, options),
@@ -31,6 +36,7 @@ export const commands = {
 	/**  Reagenda dentro da janela permitida. */
 	scheduleReschedule: (id: number, runAt: string, options?: InvokeOptions) => __TAURI_INVOKE<Schedule_Serialize>("schedule_reschedule", { id, runAt }, options),
 	historyList: (filter: HistoryFilter_Deserialize, page: Page, options?: InvokeOptions) => __TAURI_INVOKE<HistoryPage_Serialize>("history_list", { filter, page }, options),
+	/**  `path` vem do diálogo de arquivo (`@tauri-apps/plugin-dialog`) no frontend. */
 	historyExport: (format: ExportFormat, path: string, options?: InvokeOptions) => __TAURI_INVOKE<number>("history_export", { format, path }, options),
 	historyClear: (before: string | null, options?: InvokeOptions) => __TAURI_INVOKE<number>("history_clear", { before }, options),
 	statsOverview: (range: DateRange, options?: InvokeOptions) => __TAURI_INVOKE<StatsOverview_Serialize>("stats_overview", { range }, options),
@@ -454,6 +460,8 @@ export type QuotaStatus_Serialize = {
 	reason: string | null,
 };
 
+export type RenewPeriod = "auto" | "morning" | "afternoon" | "evening";
+
 export type RenewalEvent = RenewalEvent_Serialize | RenewalEvent_Deserialize;
 
 export type RenewalEvent_Deserialize = {
@@ -560,6 +568,8 @@ export type SettingsPatch_Deserialize = {
 	app_lock?: boolean | null,
 	onboarding_done?: boolean | null,
 	privacy_accepted_at?: string | null,
+	renew_period?: RenewPeriod | null,
+	automation_paused?: boolean | null,
 };
 
 export type SettingsPatch_Serialize = {
@@ -570,6 +580,8 @@ export type SettingsPatch_Serialize = {
 	app_lock: boolean | null,
 	onboarding_done: boolean | null,
 	privacy_accepted_at: string | null,
+	renew_period: RenewPeriod | null,
+	automation_paused: boolean | null,
 };
 
 export type Settings_Deserialize = {
@@ -580,6 +592,10 @@ export type Settings_Deserialize = {
 	app_lock: boolean,
 	onboarding_done: boolean,
 	privacy_accepted_at?: string | null,
+	/**  Período do dia em que as renovações automáticas são planejadas. */
+	renew_period: RenewPeriod,
+	/**  Automação pausada pela bandeja (persiste entre reinícios). */
+	automation_paused: boolean,
 };
 
 export type Settings_Serialize = {
@@ -590,6 +606,10 @@ export type Settings_Serialize = {
 	app_lock: boolean,
 	onboarding_done: boolean,
 	privacy_accepted_at: string | null,
+	/**  Período do dia em que as renovações automáticas são planejadas. */
+	renew_period: RenewPeriod,
+	/**  Automação pausada pela bandeja (persiste entre reinícios). */
+	automation_paused: boolean,
 };
 
 export type StatsOverview = StatsOverview_Serialize | StatsOverview_Deserialize;
@@ -598,7 +618,8 @@ export type StatsOverview_Deserialize = {
 	distinct_books: number,
 	active_loans: number,
 	renewals_total: number,
-	success_rate: number | null,
+	/**  `None` sem tentativas no período (não há taxa a mostrar). */
+	success_rate?: number | null,
 	days_gained: number,
 	most_renewed?: Book_Deserialize | null,
 };
@@ -607,6 +628,7 @@ export type StatsOverview_Serialize = {
 	distinct_books: number,
 	active_loans: number,
 	renewals_total: number,
+	/**  `None` sem tentativas no período (não há taxa a mostrar). */
 	success_rate: number | null,
 	days_gained: number,
 	most_renewed: Book_Serialize | null,

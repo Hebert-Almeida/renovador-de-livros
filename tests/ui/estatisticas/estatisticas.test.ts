@@ -95,9 +95,8 @@ describe('/estatisticas', () => {
 	});
 
 	it('estado vazio sem tentativas: taxa "—", não "0 %"', async () => {
-		// o backend manda success_rate 0.0 quando não há tentativas
 		mockIPC((cmd) =>
-			cmd === 'stats_overview' ? { ...overview, renewals_total: 0, success_rate: 0, most_renewed: null } : []
+			cmd === 'stats_overview' ? { ...overview, renewals_total: 0, success_rate: null, most_renewed: null } : []
 		);
 		render(Page);
 		expect(await screen.findByText('Nenhuma tentativa de renovação neste período')).toBeInTheDocument();

@@ -446,3 +446,41 @@ fn backup_restore_and_wipe() {
     let fresh = Store::open(&path, &key(5)).unwrap();
     assert!(fresh.account_list().unwrap().is_empty());
 }
+
+#[test]
+fn stats_use_brasilia_days_and_months() {
+    let dir = tempfile::tempdir().unwrap();
+    let s = Store::open(&dir.path().join("db"), &key(7)).unwrap();
+    let acc = s.account_create(&new_account("bia", None)).unwrap();
+    let b1 = s.book_upsert(acc.id, "K1", "Dom Casmurro").unwrap();
+    let l1 = s.loan_upsert(&loan(b1.id, d(2026, 11, 10))).unwrap();
+    // Fuso de Brasília: 31/10 às 22h30 locais é 01/11 01h30 UTC e conta em outubro.
+    s.event_insert(&RenewalEvent {
+        id: 0,
+        loan_id: l1.id,
+        attempted_at: Utc.with_ymd_and_hms(2026, 11, 1, 1, 30, 0).unwrap(),
+        trigger: Trigger::Auto,
+        result: RenewalResult::Success,
+        old_due_date: None,
+        new_due_date: None,
+        message: None,
+    })
+    .unwrap();
+    let oct = DateRange {
+        from: d(2026, 10, 1),
+        to: d(2026, 10, 31),
+    };
+    let nov = DateRange {
+        from: d(2026, 11, 1),
+        to: d(2026, 11, 30),
+    };
+    let m = s.stats_monthly(oct).unwrap();
+    assert_eq!(m.len(), 1);
+    assert_eq!(m[0].month, "2026-10");
+    assert_eq!(s.stats_overview(oct).unwrap().renewals_total, 1);
+    assert!(s.stats_monthly(nov).unwrap().is_empty());
+    // Sem tentativas no período: não há taxa (antes vinha 0.0, lido como "0 %").
+    let empty = s.stats_overview(nov).unwrap();
+    assert_eq!(empty.renewals_total, 0);
+    assert_eq!(empty.success_rate, None);
+}

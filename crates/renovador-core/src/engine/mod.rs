@@ -744,6 +744,22 @@ impl Engine {
             account_id: Some(acc_id),
             ..ScheduleFilter::default()
         })?;
+        let attempted_today: Vec<Id> = store
+            .history_list(
+                &HistoryFilter {
+                    account_id: Some(acc_id),
+                    from: Some(planner::local_day_start(planner::local_date(run.now))),
+                    ..HistoryFilter::default()
+                },
+                Page {
+                    offset: 0,
+                    limit: 500,
+                },
+            )?
+            .items
+            .into_iter()
+            .map(|e| e.loan_id)
+            .collect();
         let plan = planner::plan(&PlanInput {
             now: run.now,
             account: &run.account,
@@ -751,6 +767,7 @@ impl Engine {
             existing: &existing,
             install_seed: run.seed,
             prefs: run.prefs,
+            attempted_today: &attempted_today,
         })?;
         for id in plan.cancel {
             store.schedule_set_status(id, ScheduleStatus::Cancelled, ScheduleOrigin::System)?;
