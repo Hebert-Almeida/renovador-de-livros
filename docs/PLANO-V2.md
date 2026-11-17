@@ -489,13 +489,13 @@ Resolvidas:
 - **Antecedências** (#19): ficam por conta, em `/contas` (`renew_days_before` 0–3, `remind_days_before` 0–7, padrão 1 e 2). O planner passou a usar o lembrete da conta, que antes ignorava, preso em D−2.
 - **Renovar um empréstimo só** (#22): comando `loan_renew(loan_id)` (`Engine::renew_loan`), com o mesmo gate e a mesma cota de um ciclo manual.
 - **Estatísticas no fuso local** (#25): intervalo e meses no fuso de Brasília; `success_rate` é `Option<f64>`.
+- **Manual do usuário**: escrito na Onda 3, com capturas de tela; explica que, quando a renovação volta `Reserved`, `LimitReached`, `Blocked` ou `Overdue`, o engine desliga o `auto_renew` daquele empréstimo e o usuário religa pela ficha.
 - **Pausa da bandeja** (#26): `Settings.automation_paused`, lida ao iniciar e mostrada no `app_status`.
 
 Ainda abertas:
 - **Parser real (W1-06)**: os testes do engine usam parsers falsos; ligar os reais assim que existirem os fixtures da P3.
 - **Teste manual do segundo plano no Windows** (#26): seguir o roteiro do PR (bandeja, autostart, instância única, catch-up e notificações).
 - **Teste do Android** (#29): rodar o APK do CI num aparelho ou emulador. Neste PC a virtualização está desligada no firmware, e o emulador x86_64 não sobe.
-- **Documentar no manual**: quando a renovação volta `Reserved`, `LimitReached`, `Blocked` ou `Overdue`, o engine desliga o `auto_renew` daquele empréstimo, e o usuário religa pela ficha.
 
 ## 10. Verificação end-to-end
 

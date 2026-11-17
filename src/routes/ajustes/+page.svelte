@@ -217,19 +217,21 @@
 				<li>{t.schedule.window}</li>
 				<li>{t.schedule.sync}</li>
 			</ul>
-			<Select
-				label={t.schedule.period}
-				hint={t.schedule.periodHint}
-				options={periodOptions}
-				value={period}
-				onchange={(e) => onPeriod(e.currentTarget.value)}
-			/>
-			<Toggle
-				label={t.schedule.notifications}
-				description={t.schedule.notificationsHint}
-				bind:checked={flags.notifications}
-				onchange={(v) => onFlag('notifications', v)}
-			/>
+			<div class="stack">
+				<Select
+					label={t.schedule.period}
+					hint={t.schedule.periodHint}
+					options={periodOptions}
+					value={period}
+					onchange={(e) => onPeriod(e.currentTarget.value)}
+				/>
+				<Toggle
+					label={t.schedule.notifications}
+					description={t.schedule.notificationsHint}
+					bind:checked={flags.notifications}
+					onchange={(v) => onFlag('notifications', v)}
+				/>
+			</div>
 		</Ficha>
 
 		<Ficha title={t.appearance.heading}>
