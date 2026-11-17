@@ -16,7 +16,7 @@ jobs:
     name: pré-checagens
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Toolchain Rust
         run: rustup show
       - uses: Swatinem/rust-cache@v2
@@ -63,7 +63,7 @@ jobs:
             args: "--target universal-apple-darwin"
     runs-on: ${{ matrix.platform }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Dependências do Tauri (Linux)
         if: runner.os == 'Linux'
         run: |
@@ -128,7 +128,7 @@ jobs:
     environment: publicacao
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
