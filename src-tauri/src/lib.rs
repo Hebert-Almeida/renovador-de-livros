@@ -105,6 +105,7 @@ pub fn run() {
             specta.mount_events(app);
             #[cfg(desktop)]
             tray::init(app)?;
+            commands::setup(app)?;
             notify::init(app)?;
             scheduler::start(app.handle().clone());
             Ok(())
