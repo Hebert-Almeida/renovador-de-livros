@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import { semViolacoesAxe } from '../axe.ts';
 
 // Mock do IPC no navegador: mesmo contrato de `window.__TAURI_INTERNALS__` usado por @tauri-apps/api/mocks.
 async function mockIpc(page: Page) {
@@ -60,14 +60,11 @@ for (const tema of ['light', 'dark', 'contrast'] as const) {
 		await open(page);
 		await page.getByLabel('Tema', { exact: true }).selectOption(tema);
 		await expect(page.locator('html')).toHaveAttribute('data-theme', tema);
-		// A troca de tema anima as cores: o axe mede a cor computada e um quadro
-		// intermediário dá falso positivo. Repete até estabilizar (violação real persiste).
-		const axe = async () => (await new AxeBuilder({ page }).analyze()).violations;
-		await expect.poll(axe, { timeout: 10_000 }).toEqual([]);
+		await semViolacoesAxe(page);
 
 		await page.getByRole('button', { name: 'Apagar tudo…' }).click();
 		await expect(page.getByRole('dialog')).toBeVisible();
-		await expect.poll(axe, { timeout: 10_000 }).toEqual([]);
+		await semViolacoesAxe(page);
 	});
 }
 

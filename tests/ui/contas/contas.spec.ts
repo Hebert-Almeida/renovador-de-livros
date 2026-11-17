@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import { semViolacoesAxe } from '../axe.ts';
 import { installFakeBackend } from './fake-backend.ts';
 
 // Equivale ao `mockIPC` de @tauri-apps/api/mocks, injetado antes do app carregar.
@@ -29,8 +29,7 @@ async function open(page: Page) {
 }
 
 async function axe(page: Page) {
-	const res = await new AxeBuilder({ page }).analyze();
-	expect(res.violations).toEqual([]);
+	await semViolacoesAxe(page);
 }
 
 async function tabTo(page: Page, name: string | RegExp, role: 'button' | 'switch' | 'textbox' = 'button') {

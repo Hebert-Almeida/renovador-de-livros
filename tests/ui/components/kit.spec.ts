@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import { semViolacoesAxe } from '../axe.ts';
 
 const temas = ['light', 'dark', 'contrast'] as const;
 
@@ -17,15 +17,13 @@ for (const tema of temas) {
 		await page.emulateMedia({ reducedMotion: 'reduce' });
 		await open(page, `/dev/kit?tema=${tema}`);
 		await expect(page.locator('html')).toHaveAttribute('data-theme', tema);
-		const res = await new AxeBuilder({ page }).analyze();
-		expect(res.violations).toEqual([]);
+		await semViolacoesAxe(page);
 
 		// Aba "Vazio" e diálogo aberto também passam no axe.
 		await page.getByRole('tab', { name: 'Vazio' }).click();
 		await page.getByRole('button', { name: 'Abrir diálogo' }).click();
 		await expect(page.getByRole('dialog')).toBeVisible();
-		const res2 = await new AxeBuilder({ page }).analyze();
-		expect(res2.violations).toEqual([]);
+		await semViolacoesAxe(page);
 	});
 }
 

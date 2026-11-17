@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import { semViolacoesAxe } from '../axe.ts';
 
 // No navegador não há Tauri: instala um IPC falso no mesmo formato que `mockIPC`
 // (`@tauri-apps/api/mocks`) usa, `window.__TAURI_INTERNALS__.invoke`.
@@ -49,7 +49,7 @@ async function open(page: Page) {
 	await expect(page.getByRole('list', { name: 'Agendamentos' })).toBeVisible();
 }
 
-const axe = async (page: Page) => expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+const axe = semViolacoesAxe;
 
 test('/agenda sem violações axe (lista e diálogos)', async ({ page }) => {
 	await open(page);
