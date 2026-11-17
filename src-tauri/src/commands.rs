@@ -27,7 +27,14 @@ pub fn setup(app: &tauri::App) -> std::result::Result<(), Box<dyn std::error::Er
         let _ = CycleProgressEvent(p).emit(&handle);
     }));
     let data_dir = app.path().app_data_dir()?;
-    if let Err(e) = AppConfig::production(data_dir).and_then(|c| state.init(c)) {
+    let config = AppConfig::production(data_dir);
+    // No mobile a chave vem do AndroidKeyStore pelo plugin, a mesma do RenewWorker.
+    #[cfg(mobile)]
+    let config = config.map(|mut c| {
+        c.keystore = Arc::new(crate::mobile::PluginKeyStore::new(app.handle().clone()));
+        c
+    });
+    if let Err(e) = config.and_then(|c| state.init(c)) {
         tracing::error!("não foi possível abrir o banco: {e}");
     }
     Ok(())

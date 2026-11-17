@@ -15,6 +15,22 @@ mod jni_bridge;
 #[cfg(mobile)]
 mod mobile;
 
+#[cfg(mobile)]
+pub use mobile::RenovadorBg;
+
+/// Acesso às APIs nativas do plugin a partir do app (`app.renovador_bg()`).
+#[cfg(mobile)]
+pub trait RenovadorBgExt<R: Runtime> {
+    fn renovador_bg(&self) -> &RenovadorBg<R>;
+}
+
+#[cfg(mobile)]
+impl<R: Runtime, T: tauri::Manager<R>> RenovadorBgExt<R> for T {
+    fn renovador_bg(&self) -> &RenovadorBg<R> {
+        self.state::<RenovadorBg<R>>().inner()
+    }
+}
+
 #[cfg(target_os = "android")]
 const PLUGIN_IDENTIFIER: &str = "app.renovador.bg";
 

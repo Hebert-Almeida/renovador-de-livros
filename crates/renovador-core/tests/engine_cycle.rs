@@ -892,7 +892,7 @@ fn background_cycle_reports_errors_as_json() {
     let key = keys::generate_key();
     Store::open(&path, &key).unwrap();
     let ok = renovador_core::ffi::run_background_cycle(path.to_str().unwrap(), &key);
-    assert_eq!(ok, r#"{"outcomes":[]}"#);
+    assert_eq!(ok, r#"{"notes":[],"outcomes":[]}"#);
     let bad =
         renovador_core::ffi::run_background_cycle(path.to_str().unwrap(), &keys::generate_key());
     assert!(bad.contains("\"error\""));

@@ -28,6 +28,9 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "android": {
+      "minSdkVersion": 26
+    },
     "category": "Utility",
     "shortDescription": "Renovação automática e responsável de empréstimos da biblioteca",
     "licenseFile": "../LICENSE-MIT",

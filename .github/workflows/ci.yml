@@ -80,8 +80,6 @@ jobs:
   android:
     name: android debug
     runs-on: ubuntu-24.04
-    # Projeto Android ainda não existe (criado na W1-11). Remover quando existir.
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -89,8 +87,14 @@ jobs:
           distribution: temurin
           java-version: 17
       # O runner ubuntu já traz Android SDK e NDK pré-instalados.
+      # O NDK r23+ não traz mais as binutils (<triplo>-ranlib/-ar): o OpenSSL
+      # vendorizado usa as ferramentas LLVM do próprio NDK.
       - name: NDK
-        run: echo "NDK_HOME=$ANDROID_NDK_LATEST_HOME" >> "$GITHUB_ENV"
+        run: |
+          echo "NDK_HOME=$ANDROID_NDK_LATEST_HOME" >> "$GITHUB_ENV"
+          bin="$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          echo "RANLIB=$bin/llvm-ranlib" >> "$GITHUB_ENV"
+          echo "AR=$bin/llvm-ar" >> "$GITHUB_ENV"
       - name: Toolchain Rust (targets Android)
         run: rustup show
       - uses: Swatinem/rust-cache@v2
@@ -99,8 +103,17 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # aarch64 (aparelhos) e x86_64 (emulador); armv7 e i686 só no release.
       - name: Build Android debug
-        run: npx tauri android build --debug --apk
+        run: npx tauri android build --debug --apk --target aarch64 --target x86_64
+      - name: Testes JVM do plugin
+        working-directory: src-tauri/gen/android
+        run: ./gradlew --no-daemon :tauri-plugin-renovador-bg:testDebugUnitTest
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apk-debug
+          path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          retention-days: 7
 
   deny:
     name: cargo-deny

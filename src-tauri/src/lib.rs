@@ -1,5 +1,6 @@
 mod commands;
 mod events;
+mod mobile;
 mod notify;
 mod scheduler;
 mod state;
@@ -99,6 +100,8 @@ pub fn run() {
         .invoke_handler(specta.invoke_handler())
         .setup(move |app| {
             specta.mount_events(app);
+            #[cfg(mobile)]
+            mobile::start(app.handle().clone());
             #[cfg(desktop)]
             tray::init(app)?;
             commands::setup(app)?;
