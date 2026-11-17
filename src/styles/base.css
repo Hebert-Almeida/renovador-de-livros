@@ -70,12 +70,20 @@ a {
 	white-space: nowrap;
 	border: 0;
 }
+/* Movimento reduzido: pelo sistema (salvo "completo" nos Ajustes) ou por escolha nos Ajustes. */
 @media (prefers-reduced-motion: reduce) {
-	*,
-	*::before,
-	*::after {
+	:root:not([data-motion='full']) *,
+	:root:not([data-motion='full']) *::before,
+	:root:not([data-motion='full']) *::after {
 		animation-duration: 0.01ms !important;
 		animation-iteration-count: 1 !important;
 		transition-duration: 0.01ms !important;
 	}
+}
+:root[data-motion='reduced'] *,
+:root[data-motion='reduced'] *::before,
+:root[data-motion='reduced'] *::after {
+	animation-duration: 0.01ms !important;
+	animation-iteration-count: 1 !important;
+	transition-duration: 0.01ms !important;
 }

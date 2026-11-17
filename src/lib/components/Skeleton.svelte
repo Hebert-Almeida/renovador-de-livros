@@ -39,8 +39,11 @@
 		}
 	}
 	@media (prefers-reduced-motion: reduce) {
-		.skeleton__line {
+		:global(:root:not([data-motion='full'])) .skeleton__line {
 			animation: none;
 		}
+	}
+	:global(:root[data-motion='reduced']) .skeleton__line {
+		animation: none;
 	}
 </style>
