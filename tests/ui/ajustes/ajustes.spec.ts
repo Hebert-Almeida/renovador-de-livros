@@ -88,7 +88,7 @@ test('fluxo completo só por teclado', async ({ page }) => {
 
 	// Backup: preencher e criar.
 	await page.getByLabel('Arquivo de backup').focus();
-	await page.keyboard.type('C:\Backups\r.bak');
+	await page.keyboard.type('C:\\Backups\\r.bak');
 	await page.keyboard.press('Tab');
 	await page.keyboard.type('segredo123');
 	const create = page.getByRole('button', { name: 'Criar backup' });

@@ -43,7 +43,7 @@ export default {
 	data: {
 		heading: 'Backup e dados',
 		path: 'Arquivo de backup',
-		pathHint: 'Caminho completo do arquivo, por exemplo C:\Backups\renovador.bak',
+		pathHint: 'Caminho completo do arquivo, por exemplo C:\\Backups\\renovador.bak',
 		pick: 'Escolher arquivo…',
 		passphrase: 'Senha do backup',
 		passphraseHint: 'Mínimo de 8 caracteres. Sem ela o backup não pode ser restaurado.',

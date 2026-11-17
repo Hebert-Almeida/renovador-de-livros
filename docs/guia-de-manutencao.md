@@ -126,7 +126,7 @@ Antes de disparar:
 - [ ] CI verde em `main`: fmt, clippy, testes Rust, `npm run check`, Vitest, Android debug, cargo-deny, npm audit e avisos de terceiros.
 - [ ] Testes de tela (Playwright + axe) passando localmente.
 - [ ] Teste manual com conta real (seção 10 do plano): Windows e um Android físico — renovar 1 livro, conferir no site e no e-mail do Sophia; reiniciar no meio da sessão (cota persiste); cortar a rede (breaker abre); Android em Doze e modo avião.
-- [ ] Manual do usuário revisado para a versão.
+- [ ] Manual do usuário revisado para a versão. Se alguma tela mudou, regenere as capturas (dados fictícios, sem rede): `npx playwright test -c tests/manual/playwright.config.ts` (grava em `docs/manual/img/`).
 
 Disparar e revisar:
 

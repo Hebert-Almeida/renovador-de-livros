@@ -36,7 +36,7 @@ Documentação:
 
 - [Arquitetura](docs/arquitetura.md)
 - [Guia de manutenção](docs/guia-de-manutencao.md)
-- [Manual do usuário](docs/manual-do-usuario.md) (em construção)
+- [Manual do usuário](docs/manual-do-usuario.md)
 - [Plano da versão 2.0](docs/PLANO-V2.md)
 
 ## Licença
