@@ -269,7 +269,7 @@ impl AppState {
         Ok(AppStatus {
             version: renovador_core::VERSION.to_owned(),
             accounts: accounts.len() as u32,
-            automation: automation_state(&accounts, &s.policy),
+            automation: automation_state(&accounts, &s.policy, settings.automation_paused),
             next_run_at,
             onboarding_done: settings.onboarding_done,
         })
@@ -320,10 +320,18 @@ impl AppState {
             patch.library_base_url = Some(normalize_library_url(url)?);
         }
         let credentials_changed = patch.password.is_some() || patch.library_base_url.is_some();
+        let plan_changed = patch.renew_days_before.is_some()
+            || patch.remind_days_before.is_some()
+            || patch.mode.is_some()
+            || patch.status.is_some();
         let acc = s.store.account_update(id, &patch)?;
         if credentials_changed {
             // Senha ou endereço novos: o breaker da conta recomeça do zero.
             s.gate.resume_account(id)?;
+        }
+        if plan_changed {
+            // Antecedência ou modo novos: a agenda muda já, sem esperar o próximo ciclo.
+            s.engine.replan_local(&s.store, id)?;
         }
         Ok(acc)
     }
@@ -432,6 +440,25 @@ impl AppState {
         s.engine
             .run_cycle_outcome(&s.store, account_id, kind, trigger, None, &progress)
             .await
+    }
+
+    /// Renova só o empréstimo `loan_id` (gatilho manual).
+    pub async fn loan_renew(&self, loan_id: Id) -> Result<CycleReport> {
+        let s = self.services()?;
+        let sink = self
+            .progress
+            .read()
+            .unwrap_or_else(|p| p.into_inner())
+            .clone();
+        let progress = move |p: CycleProgress| {
+            if let Some(sink) = &sink {
+                sink(p);
+            }
+        };
+        s.engine
+            .renew_loan(&s.store, loan_id, &progress)
+            .await
+            .map(|o| o.report)
     }
 
     pub fn quota_status(&self, account_id: Id) -> Result<QuotaStatus> {
@@ -609,7 +636,15 @@ impl AppState {
     }
 
     pub fn settings_set(&self, patch: &SettingsPatch) -> Result<Settings> {
-        self.store()?.settings_set(patch)
+        let s = self.services()?;
+        let settings = s.store.settings_set(patch)?;
+        if patch.renew_period.is_some() {
+            // Período novo: replaneja todas as contas (só local, sem rede).
+            for acc in s.store.account_list()? {
+                s.engine.replan_local(&s.store, acc.id)?;
+            }
+        }
+        Ok(settings)
     }
 
     pub fn backup_create(&self, path: &str, passphrase: &str) -> Result<()> {
@@ -661,8 +696,13 @@ impl AppState {
     }
 }
 
-/// Estado da automação: há conta automática ativa e a política remota permite.
-pub fn automation_state(accounts: &[Account], policy: &RemotePolicy) -> AutomationState {
+/// Estado da automação: há conta automática ativa, a política remota permite e
+/// o usuário não pausou pela bandeja.
+pub fn automation_state(
+    accounts: &[Account],
+    policy: &RemotePolicy,
+    paused_by_user: bool,
+) -> AutomationState {
     let remote_enabled = policy.effective().automation_enabled;
     let has_auto = accounts
         .iter()
@@ -674,13 +714,15 @@ pub fn automation_state(accounts: &[Account], policy: &RemotePolicy) -> Automati
                 .clone()
                 .unwrap_or_else(|| "automação desligada pela política remota".into()),
         )
+    } else if paused_by_user {
+        Some("pausada pela bandeja".into())
     } else if !has_auto {
         Some("nenhuma conta ativa no modo automático".into())
     } else {
         None
     };
     AutomationState {
-        enabled: remote_enabled && has_auto,
+        enabled: remote_enabled && has_auto && !paused_by_user,
         remote_enabled,
         paused_reason,
     }

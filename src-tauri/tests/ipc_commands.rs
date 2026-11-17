@@ -596,3 +596,81 @@ fn csv_escapes_fields() {
         "id,loan_id,attempted_at,trigger,result,old_due_date,new_due_date,message\r\n"
     );
 }
+
+fn pending_renews(env: &Env) -> Vec<Schedule> {
+    env.state
+        .schedule_list(&ScheduleFilter {
+            kind: Some(ScheduleKind::Renew),
+            status: Some(ScheduleStatus::Pending),
+            ..Default::default()
+        })
+        .unwrap()
+}
+
+fn brt_hour(at: DateTime<Utc>) -> u32 {
+    use chrono::Timelike;
+    (at - Duration::hours(3)).hour()
+}
+
+#[test]
+fn period_and_lead_time_replan_without_network() {
+    let env = Env::new("replan");
+    let (loan, _) = env.loan_with_schedule(d(2026, 3, 20), brt(2026, 3, 19, 8));
+
+    // Período "noite": a renovação pendente passa para 17h–21h, sem acessar a rede.
+    let s = env
+        .state
+        .settings_set(&SettingsPatch {
+            renew_period: Some(RenewPeriod::Evening),
+            ..Default::default()
+        })
+        .unwrap();
+    assert_eq!(s.renew_period, RenewPeriod::Evening);
+    let renews = pending_renews(&env);
+    assert_eq!(renews.len(), 1, "{renews:?}");
+    assert_eq!(renews[0].loan_id, Some(loan.id));
+    assert!(
+        (17..21).contains(&brt_hour(renews[0].run_at)),
+        "{:?}",
+        renews[0].run_at
+    );
+    assert!(env.mock.urls.lock().unwrap().is_empty());
+
+    // Antecedência da conta de 1 para 3 dias: a renovação vai para o dia 17.
+    let acc = env.state.account_list().unwrap()[0].clone();
+    env.state
+        .account_update(
+            acc.id,
+            AccountPatch {
+                renew_days_before: Some(3),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    let renews = pending_renews(&env);
+    assert_eq!(renews.len(), 1);
+    assert_eq!(
+        (renews[0].run_at - Duration::hours(3)).date_naive(),
+        d(2026, 3, 17)
+    );
+}
+
+#[test]
+fn tray_pause_is_persisted_and_reported() {
+    let env = Env::new("pause");
+    env.account("a");
+    assert!(env.state.app_status().unwrap().automation.enabled);
+    env.state
+        .settings_set(&SettingsPatch {
+            automation_paused: Some(true),
+            ..Default::default()
+        })
+        .unwrap();
+    let st = env.state.app_status().unwrap();
+    assert!(!st.automation.enabled);
+    assert_eq!(
+        st.automation.paused_reason.as_deref(),
+        Some("pausada pela bandeja")
+    );
+    assert!(env.state.settings_get().unwrap().automation_paused);
+}

@@ -667,8 +667,16 @@ impl Store {
     // --- estatísticas, ajustes, diagnóstico ---
 
     /// Limites textuais `[from, to + 1 dia)` para comparar com timestamps ISO.
+    /// Limites `[início, fim)` em UTC do intervalo de datas locais (Brasília):
+    /// `attempted_at` é gravado em UTC, e uma renovação às 21h30 do dia 15 em
+    /// São Paulo (00h30 UTC do dia 16) pertence ao dia 15.
     fn range_bounds(range: DateRange) -> (String, String) {
-        (date(range.from), date(range.to + Duration::days(1)))
+        (
+            ts(crate::planner::local_day_start(range.from)),
+            ts(crate::planner::local_day_start(
+                range.to + Duration::days(1),
+            )),
+        )
     }
 
     pub fn stats_overview(&self, range: DateRange) -> Result<StatsOverview> {
@@ -721,40 +729,44 @@ impl Store {
             distinct_books,
             active_loans,
             renewals_total: total,
-            success_rate: if total == 0 {
-                0.0
-            } else {
-                f64::from(successes) / f64::from(total)
-            },
+            success_rate: (total > 0).then(|| f64::from(successes) / f64::from(total)),
             days_gained: days.round().max(0.0) as u32,
             most_renewed,
         })
     }
 
+    /// Tentativas por mês **local** (Brasília). O agrupamento é feito aqui, e não
+    /// no SQL, porque o SQLite não conhece o fuso de `attempted_at` (UTC).
     pub fn stats_monthly(&self, range: DateRange) -> Result<Vec<MonthlyStat>> {
         let conn = self.conn();
         let (from, to) = Self::range_bounds(range);
         let mut st = conn
             .prepare(
-                "SELECT substr(attempted_at, 1, 7) AS m, count(*), \
-                   coalesce(sum(result = 'success'), 0) \
-                 FROM renewal_event WHERE attempted_at >= ?1 AND attempted_at < ?2 \
-                 GROUP BY m ORDER BY m",
+                "SELECT attempted_at, result = 'success' FROM renewal_event                  WHERE attempted_at >= ?1 AND attempted_at < ?2",
             )
             .db()?;
-        collect(
+        let rows = collect(
             st.query_map(params![from, to], |r| {
-                let renewals: u32 = r.get(1)?;
-                let successes: u32 = r.get(2)?;
-                Ok(MonthlyStat {
-                    month: r.get(0)?,
-                    renewals,
-                    successes,
-                    failures: renewals - successes,
-                })
+                Ok((get_ts(r, 0)?, r.get::<_, bool>(1)?))
             })
             .db()?,
-        )
+        )?;
+        let mut by_month: std::collections::BTreeMap<String, (u32, u32)> = Default::default();
+        for (at, ok) in rows {
+            let month = crate::planner::local_date(at).format("%Y-%m").to_string();
+            let e = by_month.entry(month).or_default();
+            e.0 += 1;
+            e.1 += u32::from(ok);
+        }
+        Ok(by_month
+            .into_iter()
+            .map(|(month, (renewals, successes))| MonthlyStat {
+                month,
+                renewals,
+                successes,
+                failures: renewals - successes,
+            })
+            .collect())
     }
 
     pub fn settings_get(&self) -> Result<Settings> {
@@ -780,6 +792,8 @@ impl Store {
                 "app_lock" => s.app_lock = parse(&k, &v)?,
                 "onboarding_done" => s.onboarding_done = parse(&k, &v)?,
                 "privacy_accepted_at" => s.privacy_accepted_at = parse(&k, &v)?,
+                "renew_period" => s.renew_period = parse(&k, &v)?,
+                "automation_paused" => s.automation_paused = parse(&k, &v)?,
                 _ => {} // chaves internas ou desconhecidas são ignoradas
             }
         }
@@ -811,6 +825,12 @@ impl Store {
         }
         if let Some(v) = patch.privacy_accepted_at {
             pairs.push(("privacy_accepted_at", json(v)?));
+        }
+        if let Some(v) = patch.renew_period {
+            pairs.push(("renew_period", json(v)?));
+        }
+        if let Some(v) = patch.automation_paused {
+            pairs.push(("automation_paused", json(v)?));
         }
         let mut conn = self.conn();
         let tx = conn.transaction().db()?;

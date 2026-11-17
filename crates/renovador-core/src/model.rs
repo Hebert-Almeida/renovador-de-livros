@@ -68,6 +68,9 @@ str_enum!(CycleKind { Sync => "sync", RenewDue => "renew_due" });
 str_enum!(ExportFormat { Csv => "csv", Json => "json" });
 str_enum!(Theme { System => "system", Light => "light", Dark => "dark", Contrast => "contrast" });
 str_enum!(MotionPref { System => "system", Reduced => "reduced", Full => "full" });
+// Período do dia da renovação automática (Onda 3). O minuto continua sorteado
+// dentro do período para espalhar os acessos ao Sophia.
+str_enum!(RenewPeriod { Auto => "auto", Morning => "morning", Afternoon => "afternoon", Evening => "evening" });
 str_enum!(CycleStep {
     Waiting => "waiting",
     Login => "login",
@@ -294,6 +297,10 @@ pub struct Settings {
     pub app_lock: bool,
     pub onboarding_done: bool,
     pub privacy_accepted_at: Option<DateTime<Utc>>,
+    /// Período do dia em que as renovações automáticas são planejadas.
+    pub renew_period: RenewPeriod,
+    /// Automação pausada pela bandeja (persiste entre reinícios).
+    pub automation_paused: bool,
 }
 
 impl Default for Settings {
@@ -306,6 +313,8 @@ impl Default for Settings {
             app_lock: false,
             onboarding_done: false,
             privacy_accepted_at: None,
+            renew_period: RenewPeriod::Auto,
+            automation_paused: false,
         }
     }
 }
@@ -319,6 +328,8 @@ pub struct SettingsPatch {
     pub app_lock: Option<bool>,
     pub onboarding_done: Option<bool>,
     pub privacy_accepted_at: Option<DateTime<Utc>>,
+    pub renew_period: Option<RenewPeriod>,
+    pub automation_paused: Option<bool>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Type)]
@@ -332,7 +343,8 @@ pub struct StatsOverview {
     pub distinct_books: u32,
     pub active_loans: u32,
     pub renewals_total: u32,
-    pub success_rate: f64,
+    /// `None` sem tentativas no período (não há taxa a mostrar).
+    pub success_rate: Option<f64>,
     pub days_gained: u32,
     pub most_renewed: Option<Book>,
 }

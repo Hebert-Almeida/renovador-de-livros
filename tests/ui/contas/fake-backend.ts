@@ -13,8 +13,8 @@ export function installFakeBackend(seed: number): (cmd: string, args?: Record<st
 		has_password: true,
 		mode: 'auto',
 		status: 'active',
-		renew_days_before: 2,
-		remind_days_before: 3,
+		renew_days_before: 1,
+		remind_days_before: 2,
 		last_sync_at: null,
 		last_renewal_at: null,
 		next_renewal_at: null,
@@ -48,6 +48,8 @@ export function installFakeBackend(seed: number): (cmd: string, args?: Record<st
 				if (p.login) a.login = String(p.login);
 				if (p.library_base_url) a.library_base_url = p.library_base_url;
 				if (p.mode) a.mode = p.mode;
+				if (p.renew_days_before != null) a.renew_days_before = p.renew_days_before;
+				if (p.remind_days_before != null) a.remind_days_before = p.remind_days_before;
 				if (p.password) a.has_password = true;
 				if (p.clear_password) a.has_password = false;
 				return { ...a };

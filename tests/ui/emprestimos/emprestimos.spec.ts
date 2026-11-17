@@ -40,13 +40,13 @@ async function mockIpc(page: Page) {
 				l.returned_at = today.toISOString();
 				return null;
 			},
-			cycle_run_now: ({ accountId }) => {
+			loan_renew: () => {
 				const e = { id: db.events.length + 1, loan_id: 1, attempted_at: today.toISOString(), trigger: 'manual', result: 'success', old_due_date: null, new_due_date: plus(17), message: null };
 				db.events.push(e);
 				const l = db.loans[0];
 				l.due_date = plus(17);
 				l.renewals_count = (l.renewals_count as number) + 1;
-				return { account_id: accountId, requests_made: 3, loans_seen: 3, renewed: [e], failed: [], returned_detected: 0, error: null };
+				return { account_id: 1, requests_made: 3, loans_seen: 3, renewed: [e], failed: [], returned_detected: 0, error: null };
 			}
 		};
 		let cb = 0;
@@ -141,7 +141,11 @@ test('fluxo completo só por teclado', async ({ page }) => {
 	await page.keyboard.press('Escape');
 	await expect(page.getByRole('dialog')).toBeHidden();
 	await expect(devolver).toBeFocused();
-	await page.keyboard.press('Enter');
+	// Reabre só depois de o diálogo anterior ter fechado de vez.
+	await expect(async () => {
+		await page.keyboard.press('Enter');
+		await expect(page.getByRole('dialog')).toBeVisible({ timeout: 1000 });
+	}).toPass({ timeout: 10_000 });
 	await page.getByRole('button', { name: 'Confirmar' }).focus();
 	await page.keyboard.press('Enter');
 	await expect(page.getByRole('status').filter({ hasText: 'Empréstimo marcado como devolvido.' })).toBeVisible();

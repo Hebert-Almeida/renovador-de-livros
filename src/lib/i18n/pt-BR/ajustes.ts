@@ -9,11 +9,20 @@ export default {
 	schedule: {
 		heading: 'Antecedência, horário e notificações',
 		rules: 'Regras de agendamento',
-		renewBefore: 'Renovação automática 1 dia antes do vencimento.',
+		renewBefore: 'Renovação automática com a antecedência de cada conta (padrão: 1 dia antes), ajustável em Contas.',
 		retry: 'Nova tentativa no dia do vencimento só se a falha foi de rede.',
-		reminders: 'Lembretes 2 dias antes e no dia do vencimento.',
+		reminders: 'Lembretes com a antecedência de cada conta (padrão: 2 dias antes) e no dia do vencimento.',
 		window: 'Pedidos à biblioteca apenas entre 07h e 21h (horário de Brasília).',
 		sync: 'Sincronização de novos empréstimos a cada 3 dias.',
+		period: 'Período da renovação automática',
+		periodHint:
+			'O minuto exato é sorteado dentro do período para não sobrecarregar a biblioteca. Vale para todas as contas.',
+		periods: {
+			auto: 'Qualquer hora (07h–21h)',
+			morning: 'Manhã (07h–12h)',
+			afternoon: 'Tarde (12h–17h)',
+			evening: 'Noite (17h–21h)'
+		},
 		notifications: 'Notificações',
 		notificationsHint: 'Avisa quando um livro é renovado, falha, está vencendo ou a senha ficou inválida.'
 	},

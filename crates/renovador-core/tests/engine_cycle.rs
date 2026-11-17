@@ -897,3 +897,59 @@ fn background_cycle_reports_errors_as_json() {
         renovador_core::ffi::run_background_cycle(path.to_str().unwrap(), &keys::generate_key());
     assert!(bad.contains("\"error\""));
 }
+
+// ---------- "Renovar agora" de um empréstimo (Onda 3) ----------
+
+#[tokio::test]
+async fn renew_loan_renews_one_book_outside_the_window() {
+    let env = Env::new().await;
+    env.mount_login_ok().await;
+    // Vence dia 25: com 1 dia de antecedência, a renovação automática só seria no dia 24.
+    env.mount_list_n(
+        list_html(&[("k1", "Livro A", "2026-11-25")]),
+        2,
+        Some(list_html(&[("k1", "Livro A", "2026-12-02")])),
+    )
+    .await;
+    env.mount_renew(body("RENOVADO")).await;
+
+    // O ciclo normal não renova (fora da janela)…
+    let out = env.renew().await;
+    assert!(out.report.renewed.is_empty());
+    let loan_id = env.loan("k1").loan.id;
+    // Espaçamento mínimo entre sessões do gate.
+    env.clock.advance(chrono::Duration::hours(1));
+
+    // …mas o pedido do usuário para este livro renova.
+    let out = env
+        .engine()
+        .renew_loan(&env.store, loan_id, &|_| {})
+        .await
+        .unwrap();
+    assert_eq!(out.report.error, None);
+    assert_eq!(out.report.renewed.len(), 1);
+    assert_eq!(out.report.renewed[0].loan_id, loan_id);
+    assert_eq!(out.report.renewed[0].trigger, Trigger::Manual);
+    assert_eq!(
+        env.loan("k1").loan.due_date,
+        NaiveDate::from_ymd_opt(2026, 12, 2).unwrap()
+    );
+    env.assert_spacing();
+}
+
+#[tokio::test]
+async fn renew_loan_refuses_returned_loans_without_network() {
+    let env = Env::new().await;
+    env.standard(body("RENOVADO"), "2026-11-24").await;
+    env.renew().await;
+    let loan_id = env.loan("k1").loan.id;
+    env.store.loan_mark_returned(loan_id).unwrap();
+    let before = env.requests().await;
+    let err = env
+        .engine()
+        .renew_loan(&env.store, loan_id, &|_| {})
+        .await
+        .unwrap_err();
+    assert!(err.to_string().contains("devolvido"), "{err}");
+    assert_eq!(env.requests().await, before);
+}

@@ -1,12 +1,13 @@
 //! Planejador (seção 5.4): funções puras, fuso America/Sao_Paulo. W1-04.
 //!
 //! Regras:
-//! - renova em vencimento − N dias (`renew_days_before`), num minuto fixo da janela 07h–21h
-//!   derivado da semente da instalação e da conta;
+//! - renova em vencimento − N dias (`renew_days_before`), num minuto fixo do período escolhido
+//!   nos Ajustes (padrão: a janela 07h–21h inteira), derivado da semente da instalação e da conta;
 //! - se o horário planejado já passou e o livro ainda não venceu, executa o quanto antes
 //!   (catch-up), respeitando a janela;
 //! - livros vencidos não são renovados (o Sophia recusa) e recebem lembrete;
-//! - lembretes em D−2 e D0 para livros sem renovação automática;
+//! - lembretes em D−N (`remind_days_before` da conta, padrão 2) e D0 para livros sem renovação
+//!   automática;
 //! - sincronização de descoberta a cada 3 dias;
 //! - nova tentativa no dia do vencimento só para falha de rede ([`retry_after_failure`]);
 //! - agendamentos `origin=user` pausados ou cancelados nunca são recriados.
@@ -24,8 +25,48 @@ pub const DISCOVERY_SYNC_DAYS: i64 = 3;
 pub const WINDOW_START_HOUR: u32 = 7;
 /// Fim da janela de execução (hora local, exclusiva).
 pub const WINDOW_END_HOUR: u32 = 21;
-/// Dias antes do vencimento em que sai o primeiro lembrete.
+/// Antecedência padrão do primeiro lembrete (o valor de cada conta fica em
+/// `Account::remind_days_before`).
 pub const REMIND_EARLY_DAYS: u64 = 2;
+
+/// Preferências globais do usuário que mudam o planejamento (Ajustes).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Prefs {
+    pub period: RenewPeriod,
+}
+
+impl Default for Prefs {
+    fn default() -> Self {
+        Self {
+            period: RenewPeriod::Auto,
+        }
+    }
+}
+
+impl From<&Settings> for Prefs {
+    fn from(s: &Settings) -> Self {
+        Self {
+            period: s.renew_period,
+        }
+    }
+}
+
+/// Faixa do período em minutos a partir das 07:00, `[início, fim)`.
+pub fn period_bounds(period: RenewPeriod) -> (u32, u32) {
+    match period {
+        RenewPeriod::Auto => (0, WINDOW_MINUTES),
+        RenewPeriod::Morning => (0, 5 * 60),         // 07h–12h
+        RenewPeriod::Afternoon => (5 * 60, 10 * 60), // 12h–17h
+        RenewPeriod::Evening => (10 * 60, WINDOW_MINUTES), // 17h–21h
+    }
+}
+
+/// Minuto (a partir das 07:00) fixo por instalação e conta dentro do período.
+/// Com `Auto` é igual a [`window_minute`].
+pub fn slot_minute(install_seed: u64, account_id: Id, period: RenewPeriod) -> u32 {
+    let (start, end) = period_bounds(period);
+    start + window_minute(install_seed, account_id) % (end - start)
+}
 
 const WINDOW_MINUTES: u32 = (WINDOW_END_HOUR - WINDOW_START_HOUR) * 60;
 
@@ -38,6 +79,11 @@ pub struct PlanInput<'a> {
     pub existing: &'a [Schedule],
     /// Semente fixa por instalação (minuto aleatório na janela 07h–21h).
     pub install_seed: u64,
+    /// Período da renovação (Ajustes).
+    pub prefs: Prefs,
+    /// Empréstimos com tentativa de renovação hoje (dia local). A renovação
+    /// pendente deles (ex.: nova tentativa por falha de rede) não é trocada.
+    pub attempted_today: &'a [Id],
 }
 
 /// O que deve ser criado/alterado na agenda.
@@ -76,7 +122,7 @@ pub fn plan(input: &PlanInput<'_>) -> Result<Plan> {
     }
 
     let today = local_date(now);
-    let minute = window_minute(input.install_seed, acc.id);
+    let minute = slot_minute(input.install_seed, acc.id, input.prefs.period);
     let mut wanted: Vec<(ScheduleKind, Option<Id>, DateTime<Utc>)> = Vec::new();
 
     // Sincronização de descoberta.
@@ -106,23 +152,33 @@ pub fn plan(input: &PlanInput<'_>) -> Result<Plan> {
                 wanted.push((ScheduleKind::Renew, id, at));
             }
         } else {
-            for at in reminder_times(loan.due_date, minute, now) {
+            for at in reminder_times(loan.due_date, minute, now, acc.remind_days_before) {
                 wanted.push((ScheduleKind::Remind, id, at));
             }
         }
     }
 
     for s in input.existing.iter().filter(system_pending) {
-        let still_wanted = wanted
-            .iter()
-            .any(|&(k, l, at)| k == s.kind && l == s.loan_id && same_slot(k, s.run_at, at));
+        let still_wanted = wanted.iter().any(|&(k, l, at)| {
+            k == s.kind
+                && l == s.loan_id
+                && (sticky(input, k, l) || same_slot(k, s.run_at, at, now, input.prefs.period))
+        });
         if !still_wanted {
             out.cancel.push(s.id);
         }
     }
 
     for (kind, loan_id, run_at) in wanted {
-        if is_covered(input.existing, kind, loan_id, run_at) {
+        if is_covered(
+            input.existing,
+            kind,
+            loan_id,
+            run_at,
+            now,
+            input.prefs.period,
+            sticky(input, kind, loan_id),
+        ) {
             continue;
         }
         out.create.push(Schedule {
@@ -141,11 +197,42 @@ pub fn plan(input: &PlanInput<'_>) -> Result<Plan> {
 
 /// Dois horários representam o mesmo agendamento? Renovação/sincronização: um por
 /// empréstimo/conta; lembretes: um por dia local.
-fn same_slot(kind: ScheduleKind, a: DateTime<Utc>, b: DateTime<Utc>) -> bool {
+/// `existing` (pendente) cobre o horário desejado `wanted`?
+///
+/// - Lembrete: mesmo dia local.
+/// - Renovação: mesmo dia local e, se ainda não venceu, dentro do período dos Ajustes.
+///   Um pendente já vencido fica (o catch-up recalcula `wanted` a cada execução e
+///   não deve gerar troca de agendamento); mudar a antecedência ou o período move a
+///   renovação para o dia/período novos.
+/// - Sincronização: qualquer pendente cobre.
+fn same_slot(
+    kind: ScheduleKind,
+    existing: DateTime<Utc>,
+    wanted: DateTime<Utc>,
+    now: DateTime<Utc>,
+    period: RenewPeriod,
+) -> bool {
     match kind {
-        ScheduleKind::Remind => local_date(a) == local_date(b),
-        ScheduleKind::Renew | ScheduleKind::Sync => true,
+        ScheduleKind::Remind => local_date(existing) == local_date(wanted),
+        ScheduleKind::Renew => {
+            local_date(existing) == local_date(wanted)
+                && (existing <= now || in_period(existing, period))
+        }
+        ScheduleKind::Sync => true,
     }
+}
+
+/// Renovação de um empréstimo que já teve tentativa hoje: qualquer pendente vale.
+fn sticky(input: &PlanInput<'_>, kind: ScheduleKind, loan_id: Option<Id>) -> bool {
+    kind == ScheduleKind::Renew && loan_id.is_some_and(|id| input.attempted_today.contains(&id))
+}
+
+/// O instante (hora local) está dentro do período?
+fn in_period(at: DateTime<Utc>, period: RenewPeriod) -> bool {
+    let local = at.with_timezone(&TZ);
+    let minutes = (local.hour() * 60 + local.minute()) as i64 - i64::from(WINDOW_START_HOUR * 60);
+    let (start, end) = period_bounds(period);
+    (i64::from(start)..i64::from(end)).contains(&minutes)
 }
 
 /// `true` se um agendamento existente já cobre (ou bloqueia) o desejado.
@@ -154,6 +241,9 @@ fn is_covered(
     kind: ScheduleKind,
     loan_id: Option<Id>,
     run_at: DateTime<Utc>,
+    now: DateTime<Utc>,
+    period: RenewPeriod,
+    sticky: bool,
 ) -> bool {
     existing
         .iter()
@@ -163,7 +253,9 @@ fn is_covered(
             (ScheduleOrigin::User, ScheduleStatus::Paused | ScheduleStatus::Cancelled) => true,
             // Um pendente (do usuário ou do sistema) já cobre o mesmo slot.
             (ScheduleOrigin::User, ScheduleStatus::Pending) => true,
-            (_, ScheduleStatus::Pending) => same_slot(kind, s.run_at, run_at),
+            (_, ScheduleStatus::Pending) => {
+                sticky || same_slot(kind, s.run_at, run_at, now, period)
+            }
             // Já executado no mesmo dia local: não repetir.
             (_, ScheduleStatus::Done | ScheduleStatus::Failed) => {
                 local_date(s.run_at) == local_date(run_at)
@@ -215,13 +307,14 @@ pub fn retry_after_failure(
     now: DateTime<Utc>,
     install_seed: u64,
     account_id: Id,
+    period: RenewPeriod,
 ) -> Option<DateTime<Utc>> {
     if result != RenewalResult::NetworkError {
         return None;
     }
     let today = local_date(now);
     let at = if today < due {
-        at_minute(due, window_minute(install_seed, account_id))
+        at_minute(due, slot_minute(install_seed, account_id, period))
     } else if today == due {
         next_in_window(now + Duration::hours(1))
     } else {
@@ -230,12 +323,20 @@ pub fn retry_after_failure(
     (local_date(at) == due).then_some(at)
 }
 
-/// Horários dos lembretes D−2 e D0 ainda válidos. Um lembrete de hoje cujo minuto
-/// já passou sai assim que possível (catch-up), se ainda couber na janela de hoje.
-pub fn reminder_times(due: NaiveDate, minute: u32, now: DateTime<Utc>) -> Vec<DateTime<Utc>> {
+/// Horários dos lembretes D−N e D0 ainda válidos (`early_days = 0` deixa só o D0).
+/// Um lembrete de hoje cujo minuto já passou sai assim que possível (catch-up), se
+/// ainda couber na janela de hoje.
+pub fn reminder_times(
+    due: NaiveDate,
+    minute: u32,
+    now: DateTime<Utc>,
+    early_days: u8,
+) -> Vec<DateTime<Utc>> {
     let today = local_date(now);
     let mut out = Vec::new();
-    for date in [due - Days::new(REMIND_EARLY_DAYS), due] {
+    let mut dates = vec![due - Days::new(u64::from(early_days)), due];
+    dates.dedup();
+    for date in dates {
         if date < today {
             continue;
         }
@@ -297,6 +398,11 @@ fn catch_up(planned: DateTime<Utc>, now: DateTime<Utc>) -> DateTime<Utc> {
     } else {
         next_in_window(now)
     }
+}
+
+/// Início (00:00 em Brasília) do dia local, em UTC.
+pub fn local_day_start(date: NaiveDate) -> DateTime<Utc> {
+    local_to_utc(date.and_time(NaiveTime::MIN))
 }
 
 fn local_to_utc(naive: chrono::NaiveDateTime) -> DateTime<Utc> {

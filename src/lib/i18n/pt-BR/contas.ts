@@ -21,6 +21,16 @@ export default {
 	clearPasswordDescription: 'A senha deixa de ficar guardada neste dispositivo.',
 	mode: 'Modo de renovação',
 	modes: { auto: 'Automático', manual: 'Manual' },
+	renewDays: 'Renovar',
+	renewDaysHint: 'Quando a renovação automática é feita.',
+	renewDaysOption: (n: number) => (n === 0 ? 'No dia do vencimento' : n === 1 ? '1 dia antes' : `${n} dias antes`),
+	remindDays: 'Lembrete',
+	remindDaysHint: 'Para livros sem renovação automática ou cuja renovação falhou.',
+	remindDaysOption: (n: number) =>
+		n === 0 ? 'Só no dia do vencimento' : n === 1 ? '1 dia antes e no dia' : `${n} dias antes e no dia`,
+	daysLabel: 'Antecedência',
+	daysSummary: (renew: number, remind: number) =>
+		`renova ${renew === 0 ? 'no dia' : `${renew} d antes`} · lembra ${remind === 0 ? 'no dia' : `${remind} d antes`}`,
 	libraryOption: 'Escolha da biblioteca',
 	customLibrary: 'Outro endereço (avançado)',
 	customUrl: 'Endereço do Sophia',

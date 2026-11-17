@@ -104,3 +104,11 @@ pub fn requests_in_session(store: &Store, session_id: &str) -> Result<u32> {
     ))?;
     Ok(u32::try_from(n).unwrap_or(u32::MAX))
 }
+
+/// Preferências de planejamento dos Ajustes; usa o padrão se a leitura falhar.
+pub fn plan_prefs(store: &Store) -> crate::planner::Prefs {
+    store
+        .settings_get()
+        .map(|s| crate::planner::Prefs::from(&s))
+        .unwrap_or_default()
+}

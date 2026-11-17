@@ -38,6 +38,8 @@ describe('/contas', () => {
 		await screen.findByRole('heading', { name: '2024001' });
 		const create = calls().find((c) => c.cmd === 'account_create');
 		expect((create?.args?.account as { password: string }).password).toBe('segredo');
+		// Padrões da seção 5.4: renova 1 dia antes, lembra 2 dias antes.
+		expect(create?.args?.account).toMatchObject({ renew_days_before: 1, remind_days_before: 2 });
 		expect(document.body.textContent).not.toContain('segredo');
 		expect(screen.getByText('1 de 3 contas')).toBeInTheDocument();
 	});
@@ -92,6 +94,19 @@ describe('/contas', () => {
 		const patch = calls().find((c) => c.cmd === 'account_update')?.args?.patch as Record<string, unknown>;
 		expect(patch.password).toBe('nova');
 		expect(patch.clear_password).toBe(false);
+	});
+
+	it('ajusta a antecedência de renovação e de lembrete da conta', async () => {
+		setup(1);
+		await fireEvent.click(await screen.findByRole('button', { name: 'Editar 100' }));
+		const dialog = await openDialog();
+		await fireEvent.change(within(dialog).getByLabelText('Renovar', { exact: false }), { target: { value: '3' } });
+		await fireEvent.change(within(dialog).getByLabelText('Lembrete', { exact: false }), { target: { value: '0' } });
+		await fireEvent.click(within(dialog).getByRole('button', { name: 'Salvar', hidden: true }));
+		await waitFor(() => expect(calls().some((c) => c.cmd === 'account_update')).toBe(true));
+		const patch = calls().find((c) => c.cmd === 'account_update')?.args?.patch as Record<string, unknown>;
+		expect(patch).toMatchObject({ renew_days_before: 3, remind_days_before: 0 });
+		expect(await screen.findByText('renova 3 d antes · lembra no dia')).toBeInTheDocument();
 	});
 });
 

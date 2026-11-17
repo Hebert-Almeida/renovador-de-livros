@@ -24,10 +24,6 @@ describe('stats.ts', () => {
 		expect(rangeFor('6m', new Date(2026, 10, 15, 12))).toEqual({ from: '2026-06-01', to: '2026-11-15' });
 		expect(rangeFor('12m', new Date(2026, 0, 3, 12))).toEqual({ from: '2025-02-01', to: '2026-01-03' });
 	});
-	it('rangeFor termina na data UTC de agora (o banco grava attempted_at em UTC)', () => {
-		// 21h30 em São Paulo = 00h30 UTC do dia seguinte
-		expect(rangeFor('6m', new Date('2026-11-16T00:30:00Z')).to).toBe('2026-11-16');
-	});
 	it('fillMonths cobre o período inteiro, inclusive na virada do ano', () => {
 		const data = [
 			{ month: '2026-01', renewals: 1, successes: 1, failures: 0 },
@@ -99,9 +95,8 @@ describe('/estatisticas', () => {
 	});
 
 	it('estado vazio sem tentativas: taxa "—", não "0 %"', async () => {
-		// o backend manda success_rate 0.0 quando não há tentativas
 		mockIPC((cmd) =>
-			cmd === 'stats_overview' ? { ...overview, renewals_total: 0, success_rate: 0, most_renewed: null } : []
+			cmd === 'stats_overview' ? { ...overview, renewals_total: 0, success_rate: null, most_renewed: null } : []
 		);
 		render(Page);
 		expect(await screen.findByText('Nenhuma tentativa de renovação neste período')).toBeInTheDocument();
