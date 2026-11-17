@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Nada do app sai do aparelho por backup na nuvem nem por transferência entre
+  aparelhos (Android 12+). O banco é cifrado com uma chave presa ao Android
+  Keystore deste aparelho: uma cópia restaurada em outro aparelho não abriria,
+  e os dados pessoais não devem sair do dispositivo (aviso de privacidade).
+  Para levar os dados, use o backup do próprio app (Ajustes › Backup).
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </device-transfer>
+</data-extraction-rules>
