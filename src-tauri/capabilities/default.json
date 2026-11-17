@@ -1,15 +1,11 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Permissões mínimas da janela principal",
+  "description": "Permissões mínimas da janela principal: só o que a interface usa (notificações e o diálogo de salvar arquivo)",
   "windows": ["main"],
   "permissions": [
     "core:default",
     "notification:default",
-    "opener:allow-open-url",
-    "dialog:allow-open",
-    "dialog:allow-save",
-    "os:default",
-    "log:default"
+    "dialog:allow-save"
   ]
 }
