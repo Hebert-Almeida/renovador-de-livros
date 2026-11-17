@@ -123,8 +123,8 @@ Antes de disparar:
 - [ ] Titularidade e licença confirmadas com a Editora/NIT; `publisher` e `copyright` em `tauri.conf.json` atualizados se mudar o titular.
 - [ ] Par de chaves Ed25519 da política gerado (3.1), chave pública embutida no núcleo e `policy.json` assinado publicado.
 - [ ] Versão atualizada em `tauri.conf.json`, `package.json` e `bundle.windows.wix.version` (4.4).
-- [ ] CI verde em `main`: fmt, clippy, testes Rust, `npm run check`, Vitest, Android debug, cargo-deny, npm audit e avisos de terceiros.
-- [ ] Testes de tela (Playwright + axe) passando localmente.
+- [ ] CI verde em `main`: fmt, clippy, testes Rust, `npm run check`, Vitest, Android debug, cargo-deny, npm audit, avisos de terceiros e telas (Playwright + axe + orçamento de JS). Localmente: `node scripts/test-telas.mjs`.
+- [ ] Orçamentos que o CI não mede (seção 5.7 do plano): abertura ≤ 1 s e processo na bandeja ≤ 40 MB de RAM, medidos no Windows com o build de release. O tamanho dos instaladores é conferido pelo próprio workflow de release.
 - [ ] Teste manual com conta real (seção 10 do plano): Windows e um Android físico — renovar 1 livro, conferir no site e no e-mail do Sophia; reiniciar no meio da sessão (cota persiste); cortar a rede (breaker abre); Android em Doze e modo avião.
 - [ ] Manual do usuário revisado para a versão. Se alguma tela mudou, regenere as capturas (dados fictícios, sem rede): `npx playwright test -c tests/manual/playwright.config.ts` (grava em `docs/manual/img/`).
 

@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import { semViolacoesAxe } from '../axe.ts';
 import { account, appStatus, loans, quota } from './fixtures.ts';
 
 interface Fixture {
@@ -29,7 +29,7 @@ function installMock(fx: Fixture) {
 				['save', 'Salvando']
 			]) {
 				fire('cycle-progress-event', { account_id: 1, step, message, current: null, total: null });
-				await sleep(150);
+				await sleep(400);
 			}
 			return { account_id: 1, requests_made: 3, loans_seen: 2, renewed: [], failed: [], returned_detected: 0, error: null };
 		},
@@ -76,14 +76,14 @@ for (const tema of ['light', 'dark', 'contrast']) {
 	test(`painel no tema ${tema} sem violações axe`, async ({ page }) => {
 		await open(page, full, tema);
 		await expect(page.getByRole('heading', { name: 'Próximos vencimentos' })).toBeVisible();
-		expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+		await semViolacoesAxe(page);
 	});
 }
 
 test('estado vazio sem violações axe', async ({ page }) => {
 	await open(page, { ...full, accounts: [], loans: [] });
 	await expect(page.getByRole('heading', { name: 'Comece cadastrando sua conta' })).toBeVisible();
-	expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+	await semViolacoesAxe(page);
 });
 
 test('teclado: sincronizar agora e acompanhar o progresso', async ({ page }) => {
@@ -94,10 +94,13 @@ test('teclado: sincronizar agora e acompanhar o progresso', async ({ page }) => 
 	for (let i = 0; i < 40 && !(await btn.evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press('Tab');
 	await expect(btn).toBeFocused();
 	await page.keyboard.press('Enter');
+	// A região do painel anuncia início e fim; as etapas são anunciadas pelo ProgressSteps.
 	const live = page.locator('.painel__live');
-	await expect(live).toHaveText(/Entrando na biblioteca|Lendo empréstimos|Salvando/);
+	await expect(live).toHaveText('Sincronizando…');
+	const etapas = page.getByRole('list', { name: 'Progresso da sincronização' });
+	await expect(etapas.locator('[aria-current="step"]')).toHaveText(/Entrar|Listar empréstimos|Salvar/);
 	await expect(live).toHaveText('Sincronização concluída: 2 empréstimos, 0 renovados.');
-	expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+	await semViolacoesAxe(page);
 	await expect(page.getByRole('button', { name: 'Sincronizar agora' })).toBeFocused();
 });
 

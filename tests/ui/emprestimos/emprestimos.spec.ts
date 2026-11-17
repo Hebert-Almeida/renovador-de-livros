@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import { semViolacoesAxe } from '../axe.ts';
 
 // Mock do IPC do Tauri no navegador (equivalente a mockIPC de @tauri-apps/api/mocks).
 async function mockIpc(page: Page) {
@@ -81,15 +81,15 @@ for (const tema of ['light', 'dark'] as const) {
 		await page.emulateMedia({ reducedMotion: 'reduce', colorScheme: tema });
 		await open(page, '/emprestimos', 'Empréstimos');
 		await expect(page.getByRole('link', { name: /Dom Casmurro/ })).toBeVisible();
-		expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+		await semViolacoesAxe(page);
 
 		await open(page, '/emprestimos/1', 'Dom Casmurro');
 		await expect(page.getByRole('switch', { name: 'Renovação automática' })).toBeVisible();
-		expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+		await semViolacoesAxe(page);
 
 		await page.getByRole('button', { name: 'Marcar como devolvido' }).click();
 		await expect(page.getByRole('dialog')).toBeVisible();
-		expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+		await semViolacoesAxe(page);
 	});
 }
 

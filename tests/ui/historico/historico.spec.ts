@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import { semViolacoesAxe } from '../axe.ts';
 
 // Mock do IPC do Tauri no navegador. Equivale ao `mockIPC` de `@tauri-apps/api/mocks`,
 // que não pode ser importado dentro de `addInitScript`.
@@ -61,10 +61,10 @@ test.beforeEach(async ({ page }) => {
 
 test('/historico sem violações axe (lista e diálogo)', async ({ page }) => {
 	await open(page);
-	expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+	await semViolacoesAxe(page);
 	await page.getByRole('button', { name: 'Apagar histórico' }).click();
 	await expect(page.getByRole('dialog')).toBeVisible();
-	expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+	await semViolacoesAxe(page);
 });
 
 test('fluxo completo só por teclado: filtrar, exportar e apagar', async ({ page }) => {

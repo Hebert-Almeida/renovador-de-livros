@@ -86,6 +86,7 @@ jobs:
           cache: npm
       - run: npm ci
       - uses: tauri-apps/tauri-action@v0
+        id: tauri
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -95,6 +96,27 @@ jobs:
           releaseDraft: true
           prerelease: true
           args: ${{ matrix.args }}
+      # Orçamento da seção 5.7: instalador desktop ≤ 15 MB. O AppImage fica de fora:
+      # ele embute o WebKitGTK e as bibliotecas do sistema por definição.
+      - name: Tamanho dos instaladores
+        shell: bash
+        env:
+          ARTIFACTS: ${{ steps.tauri.outputs.artifactPaths }}
+        run: |
+          node -e '
+            const fs = require("fs");
+            const LIMITE = 15 * 1024 * 1024;
+            const paths = JSON.parse(process.env.ARTIFACTS || "[]")
+              .filter((p) => /\.(exe|msi|dmg|deb|rpm)$/.test(p) && fs.existsSync(p));
+            let ruim = 0;
+            for (const p of paths) {
+              const mb = fs.statSync(p).size / 1024 / 1024;
+              console.log(`${mb.toFixed(2)} MB  ${p}`);
+              if (mb * 1024 * 1024 > LIMITE) { ruim++; console.error(`::error::${p} passa de 15 MB`); }
+            }
+            if (!paths.length) { console.error("::error::nenhum instalador encontrado"); process.exit(1); }
+            process.exit(ruim ? 1 : 0);
+          '
 
   android:
     name: release (android)

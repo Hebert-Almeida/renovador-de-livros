@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import { semViolacoesAxe } from '../axe.ts';
 
 // Equivalente no navegador ao `mockIPC` de `@tauri-apps/api/mocks`: define
 // `__TAURI_INTERNALS__` antes do app carregar e registra as chamadas.
@@ -40,8 +40,7 @@ async function open(page: Page) {
 }
 
 async function axe(page: Page) {
-	const res = await new AxeBuilder({ page }).analyze();
-	expect(res.violations).toEqual([]);
+	await semViolacoesAxe(page);
 }
 
 async function tabTo(page: Page, name: RegExp | string, role: 'button' | 'checkbox' | 'switch' | 'textbox' | 'radio') {

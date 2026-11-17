@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import { semViolacoesAxe } from '../axe.ts';
 import { overview, monthly } from './fixtures.ts';
 
 const temas = ['light', 'dark', 'contrast'] as const;
@@ -43,8 +43,7 @@ for (const tema of temas) {
 		await open(page);
 		await expect(page.getByRole('img', { name: /Gráfico de colunas/ })).toBeVisible();
 		await expect(page.locator('html')).toHaveAttribute('data-theme', tema);
-		const res = await new AxeBuilder({ page }).analyze();
-		expect(res.violations).toEqual([]);
+		await semViolacoesAxe(page);
 	});
 }
 

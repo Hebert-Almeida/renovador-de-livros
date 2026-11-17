@@ -155,3 +155,29 @@ jobs:
       # Mudou Cargo.lock ou package-lock.json? Rode `node scripts/gen-notices.mjs` e commite.
       - name: THIRD-PARTY-NOTICES.md e licenças da tela Sobre atualizados
         run: node scripts/gen-notices.mjs --check
+
+  telas:
+    name: telas (Playwright + axe)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Chromium do Playwright
+        run: npx playwright install --with-deps chromium
+      # Cada tela com IPC mockado: axe nos três temas, fluxos só por teclado e alvos de 44 px;
+      # depois as rotas (axe) e o orçamento de JS inicial (≤ 150 KB gz, Three sob demanda).
+      # Retentativas só absorvem a recarga do Vite (dev) na primeira visita; ficam marcadas como "flaky".
+      - name: Suítes de tela, rotas e orçamento de JS
+        run: node scripts/test-telas.mjs --retries=2
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-falhas
+          path: |
+            test-results/
+            tests/ui/*/test-results/
+          retention-days: 7

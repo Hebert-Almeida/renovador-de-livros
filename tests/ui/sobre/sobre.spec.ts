@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import { semViolacoesAxe } from '../axe.ts';
 
 // Mock do IPC do Tauri no navegador (equivalente ao mockIPC de @tauri-apps/api/mocks).
 async function mockIpc(page: Page) {
@@ -38,11 +38,9 @@ for (const tema of ['light', 'dark', 'contrast'] as const) {
 	test(`/sobre no tema ${tema} sem violações axe`, async ({ page }) => {
 		await open(page);
 		await page.evaluate((t) => document.documentElement.setAttribute('data-theme', t), tema);
-		const res = await new AxeBuilder({ page }).analyze();
-		expect(res.violations).toEqual([]);
+		await semViolacoesAxe(page);
 		await page.getByRole('tab', { name: 'Uso responsável' }).click();
-		const res2 = await new AxeBuilder({ page }).analyze();
-		expect(res2.violations).toEqual([]);
+		await semViolacoesAxe(page);
 	});
 }
 
