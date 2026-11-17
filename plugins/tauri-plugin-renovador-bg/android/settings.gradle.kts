@@ -4,6 +4,11 @@ pluginManagement {
         mavenCentral()
         gradlePluginPortal()
     }
+    // Só para compilar o plugin sozinho; no app valem as versões do projeto.
+    plugins {
+        id("com.android.library") version "8.9.1"
+        id("org.jetbrains.kotlin.android") version "2.1.0"
+    }
 }
 
 dependencyResolutionManagement {

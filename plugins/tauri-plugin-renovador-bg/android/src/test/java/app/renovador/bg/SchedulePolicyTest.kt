@@ -59,6 +59,13 @@ class SchedulePolicyTest {
     }
 
     @Test
+    fun outcomeSuccessWhenReportErrorIsNull() {
+        // formato real do núcleo: todo CycleReport traz "error": null
+        val json = "{\"notes\":[],\"outcomes\":[{\"report\":{\"account_id\":1,\"error\":null}}]}"
+        assertEquals(SchedulePolicy.Outcome.SUCCESS, SchedulePolicy.outcome(json, 0))
+    }
+
+    @Test
     fun outcomeFailureOnNonRetryableError() {
         assertEquals(SchedulePolicy.Outcome.FAILURE, SchedulePolicy.outcome("{\"error\": \"reserva\"}", 0))
     }

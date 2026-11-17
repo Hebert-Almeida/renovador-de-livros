@@ -53,7 +53,8 @@ object SchedulePolicy {
     /** Resultado do worker. */
     enum class Outcome { SUCCESS, RETRY, FAILURE }
 
-    private val ERROR_FIELD = Regex("\"error\"\\s*:")
+    /** Só um erro com texto conta: todo `CycleReport` traz `"error": null`. */
+    private val ERROR_FIELD = Regex("\"error\"\\s*:\\s*\"")
     private val RETRY_TRUE = Regex("\"retry\"\\s*:\\s*true")
 
     /**

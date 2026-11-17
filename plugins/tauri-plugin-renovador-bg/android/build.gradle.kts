@@ -1,8 +1,10 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
+// Sem versão aqui: dentro do app (src-tauri/gen/android) valem as versões do
+// projeto; sozinho, as do settings.gradle.kts deste plugin.
 plugins {
-    id("com.android.library") version "8.9.1"
-    id("org.jetbrains.kotlin.android") version "2.1.0"
+    id("com.android.library")
+    id("org.jetbrains.kotlin.android")
 }
 
 android {
@@ -44,4 +46,6 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.10.0")
     implementation(project(":tauri-android"))
     testImplementation("junit:junit:4.13.2")
+    // org.json real nos testes JVM (no android.jar ele é só um stub)
+    testImplementation("org.json:json:20240303")
 }

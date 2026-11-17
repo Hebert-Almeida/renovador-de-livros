@@ -24,6 +24,7 @@ class RenewWorker(context: Context, params: WorkerParameters) : CoroutineWorker(
             Log.e(TAG, "ciclo em segundo plano falhou", t)
             return@withContext Result.failure()
         }
+        BackgroundNotifier.show(applicationContext, BackgroundNotifier.parseNotes(report))
         when (SchedulePolicy.outcome(report, runAttemptCount)) {
             SchedulePolicy.Outcome.SUCCESS -> Result.success()
             SchedulePolicy.Outcome.RETRY -> Result.retry()

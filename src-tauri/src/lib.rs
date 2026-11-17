@@ -1,5 +1,6 @@
 mod commands;
 mod events;
+mod mobile;
 mod notify;
 mod scheduler;
 mod state;
@@ -100,6 +101,8 @@ pub fn run() {
         .invoke_handler(specta.invoke_handler())
         .setup(move |app| {
             specta.mount_events(app);
+            #[cfg(mobile)]
+            mobile::start(app.handle().clone());
             commands::setup(app)?;
             // Depois do setup: a bandeja lê dos Ajustes se a automação está pausada.
             #[cfg(desktop)]

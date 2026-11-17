@@ -8,6 +8,7 @@
 //! gravado preservado.
 
 mod db;
+pub mod notes;
 
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
