@@ -349,6 +349,29 @@ async fn validate_library_requires_sophia_header() {
 }
 
 #[tokio::test]
+async fn validate_library_accepts_sophia_page_without_header() {
+    // O servidor real pode não enviar `x-powered-by: Sophia`; a página do
+    // Terminal Web mobile tem título e logotipo próprios.
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/5362/mobile/login.asp"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .insert_header("x-powered-by", "ASP.NET")
+                .set_body_string(
+                    "<html><head><title>Sophia Biblioteca - Mobile</title></head>                     <body><img id=\"imglogotiposophia\" alt=\"Sophia\"></body></html>",
+                ),
+        )
+        .mount(&server)
+        .await;
+    let h = client(Arc::new(FakeGate::default()))
+        .validate_library(&base(&server))
+        .await
+        .unwrap();
+    assert_eq!(h, host(&server));
+}
+
+#[tokio::test]
 async fn https_is_required_by_default() {
     let gate: Arc<FakeGate> = Arc::new(FakeGate::default());
     let c = HttpSophiaClient::new(

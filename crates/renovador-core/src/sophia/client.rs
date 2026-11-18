@@ -324,7 +324,7 @@ impl SophiaClient for HttpSophiaClient {
                 .send(&ticket, "validate", &host, Request::Get(&url))
                 .await?;
             let checked = Self::ok_status(&resp).and_then(|()| {
-                if detect::is_sophia_powered(&resp) {
+                if detect::is_sophia_site(&resp) {
                     Ok(())
                 } else {
                     Err(Error::InvalidLibrary(
