@@ -120,28 +120,42 @@ pub fn parse_loan_list(html: &str) -> Result<Vec<RemoteLoan>> {
     Ok(loans)
 }
 
-/// Todas as datas dd/mm/aaaa do texto, com a posição em que começam.
+/// Todas as datas dd/mm/aaaa ou dd/mm/aa do texto, com a posição em que
+/// começam. O Sophia mobile mostra "Data prevista: 23/11/26"; ano com dois
+/// dígitos é lido como 20aa.
 fn dates_in(text: &str) -> Vec<(usize, NaiveDate)> {
     let b = text.as_bytes();
+    let digit = |j: usize| b.get(j).is_some_and(u8::is_ascii_digit);
     let mut out = Vec::new();
     let mut i = 0;
-    while i + 10 <= b.len() {
-        let w = &b[i..i + 10];
-        let digits = |r: std::ops::Range<usize>| w[r].iter().all(u8::is_ascii_digit);
-        let bounded = (i == 0 || !b[i - 1].is_ascii_digit())
-            && (i + 10 == b.len() || !b[i + 10].is_ascii_digit());
-        // Os 10 bytes são ASCII, então o fatiamento cai em limites de caractere.
-        if bounded
-            && digits(0..2)
-            && w[2] == b'/'
-            && digits(3..5)
-            && w[5] == b'/'
-            && digits(6..10)
-            && let Ok(d) = NaiveDate::parse_from_str(&text[i..i + 10], "%d/%m/%Y")
-        {
-            out.push((i, d));
-            i += 10;
-            continue;
+    while i + 8 <= b.len() {
+        let head = (i == 0 || !b[i - 1].is_ascii_digit())
+            && digit(i)
+            && digit(i + 1)
+            && b[i + 2] == b'/'
+            && digit(i + 3)
+            && digit(i + 4)
+            && b[i + 5] == b'/'
+            && digit(i + 6)
+            && digit(i + 7);
+        if head {
+            let year_len = if digit(i + 8) && digit(i + 9) { 4 } else { 2 };
+            let end = i + 6 + year_len;
+            // Os bytes casados são ASCII, então o fatiamento cai em limites de caractere.
+            if !digit(end)
+                && let (Ok(day), Ok(month), Ok(year)) = (
+                    text[i..i + 2].parse::<u32>(),
+                    text[i + 3..i + 5].parse::<u32>(),
+                    text[i + 6..end].parse::<i32>(),
+                )
+            {
+                let year = if year_len == 2 { 2000 + year } else { year };
+                if let Some(d) = NaiveDate::from_ymd_opt(year, month, day) {
+                    out.push((i, d));
+                    i = end;
+                    continue;
+                }
+            }
         }
         i += 1;
     }
@@ -177,7 +191,7 @@ fn number_after(lower: &str, label: &str) -> Option<String> {
         .chars()
         .take_while(char::is_ascii_digit)
         .collect();
-    // Não confunde com uma data (dd/mm/aaaa).
+    // Não confunde com uma data (dd/mm/aa ou dd/mm/aaaa).
     if rest[begin + digits.len()..].starts_with('/') {
         return None;
     }
@@ -424,6 +438,42 @@ mod tests {
             RenewOutcome::Reserved { .. }
         ));
         assert!(classify_renewal(r#"<input id="login">"#).is_err());
+    }
+
+    /// Estrutura copiada de renovacoes.asp (Sophia mobile), com títulos,
+    /// tombos e códigos trocados por valores fictícios.
+    const MOBILE_LIST: &str = r#"<html><body>
+<div data-role="content" class="ui-content" role="main">
+<div id="logotiposophia-padrao"><img id="imglogotiposophia" alt="Sophia" src="logo.png"></div>
+<ul data-role="listview" data-inset="true">    <li data-role="list-divider" role="heading">        Renovações    </li>    <li data-theme="d" class="ui-li-static ui-body-d">        <div class="div-textoLista"><h3>Livro de exemplo um</h3><p>Tombo: 000111</p><p>Biblioteca: <a class="link-mobile ui-link" href="https://exemplo.invalid/5362/mobile/detalhe_biblioteca.asp?codigo=1">Biblioteca Central</a></p><p id="data_prevista1">Data prevista: 23/11/26</p>        <div class="ui-grid-a">            <div class="ui-block-a"></div>            <div class="ui-block-b">	        <a href="https://exemplo.invalid/5362/mobile/renovar.asp?idioma=ptbr&amp;codigo_circulacao=1&amp;acesso=web" data-role="button" data-rel="dialog" class="botaoFechar ui-link ui-btn" role="button">Renovar</a>            </div>        </div>    </div></li>    <li data-theme="d" class="ui-li-static ui-body-d ui-last-child">        <div class="div-textoLista"><h3>Livro de exemplo dois</h3><p>Tombo: 222333</p><p>Biblioteca: <a class="link-mobile ui-link" href="https://exemplo.invalid/5362/mobile/detalhe_biblioteca.asp?codigo=1">Biblioteca Central</a></p><p id="data_prevista2">Data prevista: 02/01/27</p>        <div class="ui-grid-a">            <div class="ui-block-a"></div>            <div class="ui-block-b">	        <a href="https://exemplo.invalid/5362/mobile/renovar.asp?idioma=ptbr&amp;codigo_circulacao=2&amp;acesso=web" data-role="button" data-rel="dialog" class="botaoFechar ui-link ui-btn" role="button">Renovar</a>            </div>        </div>    </div></li></ul>
+</div></body></html>"#;
+
+    #[test]
+    fn parses_mobile_list_with_two_digit_year() {
+        let l = parse_loan_list(MOBILE_LIST).unwrap();
+        assert_eq!(l.len(), 2);
+        assert_eq!(l[0].title, "Livro de exemplo um");
+        assert_eq!(l[0].item_key, "tombo:000111");
+        assert_eq!(l[0].due_date, d(2026, 11, 23));
+        assert_eq!(l[0].renewals_count, None);
+        assert_eq!(
+            l[0].renew_url.as_deref(),
+            Some(
+                "https://exemplo.invalid/5362/mobile/renovar.asp?idioma=ptbr&codigo_circulacao=1&acesso=web"
+            )
+        );
+        assert_eq!(l[1].item_key, "tombo:222333");
+        assert_eq!(l[1].due_date, d(2027, 1, 2));
+    }
+
+    #[test]
+    fn dates_accept_two_digit_year() {
+        assert_eq!(
+            dates_in("Data prevista: 23/11/26"),
+            vec![(15, d(2026, 11, 23))]
+        );
+        assert_eq!(dates_in("23/11/261"), vec![]);
+        assert_eq!(dates_in("31/02/26"), vec![]);
     }
 
     #[test]
