@@ -393,14 +393,14 @@ impl Env {
     async fn mount_list_n(&self, first: String, n: u64, then: Option<String>) {
         let then_body = then.unwrap_or_else(|| first.clone());
         Mock::given(method("GET"))
-            .and(path("/5362/mobile/lista.asp"))
+            .and(path("/5362/mobile/renovacoes.asp"))
             .respond_with(ResponseTemplate::new(200).set_body_string(first))
             .up_to_n_times(n)
             .with_priority(1)
             .mount(&self.server)
             .await;
         Mock::given(method("GET"))
-            .and(path("/5362/mobile/lista.asp"))
+            .and(path("/5362/mobile/renovacoes.asp"))
             .respond_with(ResponseTemplate::new(200).set_body_string(then_body))
             .mount(&self.server)
             .await;
@@ -598,7 +598,7 @@ async fn server_503_opens_host_breaker_for_at_least_one_hour() {
     let env = Env::new().await;
     env.mount_login_ok().await;
     Mock::given(method("GET"))
-        .and(path("/5362/mobile/lista.asp"))
+        .and(path("/5362/mobile/renovacoes.asp"))
         .respond_with(ResponseTemplate::new(503))
         .mount(&env.server)
         .await;
@@ -652,7 +652,7 @@ async fn cloudflare_challenge_stops_immediately() {
     let env = Env::new().await;
     env.mount_login_ok().await;
     Mock::given(method("GET"))
-        .and(path("/5362/mobile/lista.asp"))
+        .and(path("/5362/mobile/renovacoes.asp"))
         .respond_with(ResponseTemplate::new(403).set_body_string("<title>Just a moment...</title>"))
         .mount(&env.server)
         .await;
@@ -670,7 +670,7 @@ async fn changed_html_aborts_and_is_counted() {
     let env = Env::new().await;
     env.mount_login_ok().await;
     Mock::given(method("GET"))
-        .and(path("/5362/mobile/lista.asp"))
+        .and(path("/5362/mobile/renovacoes.asp"))
         .respond_with(body("<html><div>layout novo</div></html>"))
         .mount(&env.server)
         .await;

@@ -369,18 +369,11 @@ impl SophiaClient for HttpSophiaClient {
             Err(e) => return self.finish(permit, &resp, Err(e)),
         };
         if parsed.login_valido.trim().eq_ignore_ascii_case("true") {
-            if parsed.url.trim().is_empty() {
-                return self.finish(
-                    permit,
-                    &resp,
-                    Err(Error::Parse("login sem url da lista".into())),
-                );
-            }
             self.gate
                 .report(permit, Some(resp.status), RequestOutcome::Ok, None);
             Ok(LoginResult::Ok(LoggedSession {
                 base_url: self.base(base_url)?.to_string(),
-                loans_path: parsed.url,
+                loans_path: selectors::LOANS_PAGE.to_owned(),
             }))
         } else {
             self.gate.report(

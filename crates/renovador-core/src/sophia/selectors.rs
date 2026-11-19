@@ -3,6 +3,10 @@
 
 pub const LOGIN_PAGE: &str = "mobile/login.asp?idioma=ptbr&acesso=web&destino=6&detalhe=0";
 pub const LOGIN_POST: &str = "mobile/ajx_efetua_login.asp";
+/// Lista de empréstimos com os links de renovação, relativa a `mobile/`.
+/// É a página que o v1 lia. O `url` do JSON de login leva ao menu
+/// inicial, que não tem os livros, por isso não é usado.
+pub const LOANS_PAGE: &str = "renovacoes.asp?idioma=ptbr&acesso=web";
 
 /// Corpo do POST de login, na ordem do site. `codigo` e `senha` são preenchidos.
 pub fn login_form<'a>(login: &'a str, password: &'a str) -> [(&'static str, &'a str); 10] {

@@ -179,7 +179,7 @@ async fn login_ok_sends_cookies_and_honest_user_agent() {
     let LoginResult::Ok(s) = res else {
         panic!("esperava login ok")
     };
-    assert_eq!(s.loans_path, "lista.asp?x=1");
+    assert_eq!(s.loans_path, "renovacoes.asp?idioma=ptbr&acesso=web");
     assert_eq!(gate.kinds(), ["login_page", "login"]);
     assert_eq!(gate.outcomes(), [RequestOutcome::Ok, RequestOutcome::Ok]);
 }
