@@ -11,7 +11,7 @@ use tauri::{AppHandle, Manager, State};
 use tauri_specta::Event as _;
 
 use crate::events::{CycleFinishedEvent, CycleProgressEvent};
-use crate::state::{AppConfig, AppState};
+use crate::state::{AppConfig, AppState, TraceStatus};
 
 /// Handle do app, para emitir eventos a partir dos comandos.
 static APP: OnceLock<AppHandle> = OnceLock::new();
@@ -298,4 +298,29 @@ pub async fn diagnostics_requests(
     limit: u32,
 ) -> Result<Vec<RequestLogEntry>> {
     state.diagnostics_requests(limit)
+}
+
+/// Estado do registro detalhado (páginas gravadas para diagnóstico).
+#[tauri::command]
+#[specta::specta]
+pub async fn diagnostics_trace_status(state: State<'_, AppState>) -> Result<TraceStatus> {
+    state.diagnostics_trace_status()
+}
+
+/// Liga ou desliga o registro detalhado; desligar apaga as páginas.
+#[tauri::command]
+#[specta::specta]
+pub async fn diagnostics_trace_set(state: State<'_, AppState>, on: bool) -> Result<TraceStatus> {
+    state.diagnostics_trace_set(on)
+}
+
+/// Abre a pasta do registro detalhado no explorador de arquivos.
+#[tauri::command]
+#[specta::specta]
+pub async fn diagnostics_trace_open(app: AppHandle, state: State<'_, AppState>) -> Result<()> {
+    use tauri_plugin_opener::OpenerExt as _;
+    let dir = state.diagnostics_trace_dir()?;
+    app.opener()
+        .open_path(dir.display().to_string(), None::<&str>)
+        .map_err(|e| renovador_core::Error::Invalid(format!("não foi possível abrir a pasta: {e}")))
 }

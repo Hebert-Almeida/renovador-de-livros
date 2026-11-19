@@ -47,6 +47,12 @@ export const commands = {
 	backupRestore: (path: string, passphrase: string, options?: InvokeOptions) => __TAURI_INVOKE<null>("backup_restore", { path, passphrase }, options),
 	dataWipe: (options?: InvokeOptions) => __TAURI_INVOKE<null>("data_wipe", undefined, options),
 	diagnosticsRequests: (limit: number, options?: InvokeOptions) => __TAURI_INVOKE<RequestLogEntry_Serialize[]>("diagnostics_requests", { limit }, options),
+	/**  Estado do registro detalhado (páginas gravadas para diagnóstico). */
+	diagnosticsTraceStatus: (options?: InvokeOptions) => __TAURI_INVOKE<TraceStatus>("diagnostics_trace_status", undefined, options),
+	/**  Liga ou desliga o registro detalhado; desligar apaga as páginas. */
+	diagnosticsTraceSet: (on: boolean, options?: InvokeOptions) => __TAURI_INVOKE<TraceStatus>("diagnostics_trace_set", { on }, options),
+	/**  Abre a pasta do registro detalhado no explorador de arquivos. */
+	diagnosticsTraceOpen: (options?: InvokeOptions) => __TAURI_INVOKE<null>("diagnostics_trace_open", undefined, options),
 };
 
 /** Events */
@@ -635,6 +641,13 @@ export type StatsOverview_Serialize = {
 };
 
 export type Theme = "system" | "light" | "dark" | "contrast";
+
+/**  Estado do registro detalhado, mostrado na tela Sobre. */
+export type TraceStatus = {
+	enabled: boolean,
+	path: string,
+	pages: number,
+};
 
 export type Trigger = "auto" | "manual" | "catch_up";
 

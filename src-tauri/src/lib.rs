@@ -44,6 +44,9 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
             commands::backup_restore,
             commands::data_wipe,
             commands::diagnostics_requests,
+            commands::diagnostics_trace_status,
+            commands::diagnostics_trace_set,
+            commands::diagnostics_trace_open,
         ])
         .events(collect_events![
             events::CycleProgressEvent,

@@ -64,5 +64,21 @@ export default {
 		status: 'HTTP',
 		outcome: 'Resultado',
 		account: 'Conta'
+	},
+	trace: {
+		heading: 'Registro detalhado',
+		description:
+			'Grava no computador cada página que o app recebe da biblioteca, com um arquivo registro.txt que resume cada passo. Serve para entender por que algo não funcionou.',
+		toggle: 'Gravar as páginas recebidas',
+		toggleHint: 'As páginas têm seu nome e seus empréstimos. Ficam só neste computador e são apagadas ao desligar. A senha nunca é gravada.',
+		open: 'Abrir pasta',
+		folder: 'Pasta',
+		pages: (n: number) => (n === 1 ? '1 página gravada.' : `${n} páginas gravadas.`),
+		howTo: 'Ligue, sincronize a conta e depois abra a pasta. Comece pelo registro.txt.',
+		unavailable: 'O registro detalhado não está disponível.',
+		error: 'Não foi possível alterar o registro detalhado.',
+		openError: 'Não foi possível abrir a pasta.',
+		on: 'Registro detalhado ligado.',
+		off: 'Registro detalhado desligado e páginas apagadas.'
 	}
 } as const;

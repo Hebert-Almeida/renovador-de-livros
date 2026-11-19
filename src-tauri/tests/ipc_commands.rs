@@ -105,6 +105,7 @@ impl Env {
             transport: mock.clone(),
             client_config: ClientConfig::default(),
             policy_public_key: None,
+            tracer: None,
         };
         let state = AppState::default();
         state.init(config.clone()).unwrap();

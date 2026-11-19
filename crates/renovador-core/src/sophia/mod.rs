@@ -5,6 +5,7 @@ pub mod detect;
 pub mod model;
 pub mod parser;
 pub mod selectors;
+pub mod trace;
 
 use async_trait::async_trait;
 
