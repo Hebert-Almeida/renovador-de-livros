@@ -92,11 +92,11 @@ describe('registro detalhado', () => {
 		render(SobrePage);
 		const sw = await screen.findByRole('switch', { name: 'Gravar as páginas recebidas' });
 		expect(sw).toHaveAttribute('aria-checked', 'false');
-		expect(screen.queryByRole('button', { name: 'Abrir pasta' })).toBeNull();
+		expect(screen.queryByRole('button', { name: 'Abrir no navegador' })).toBeNull();
 		await fireEvent.click(sw);
 		expect(await screen.findByText('3 páginas gravadas.')).toBeInTheDocument();
 		expect(screen.getByText('C:\dados\diagnostico')).toBeInTheDocument();
-		await fireEvent.click(screen.getByRole('button', { name: 'Abrir pasta' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Abrir no navegador' }));
 		await vi.waitFor(() => expect(opened).toBe(1));
 	});
 

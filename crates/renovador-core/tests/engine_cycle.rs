@@ -378,7 +378,7 @@ impl Env {
         Mock::given(method("POST"))
             .and(path("/5362/mobile/ajx_efetua_login.asp"))
             .respond_with(ResponseTemplate::new(200).set_body_string(
-                r#"{"login_valido":"true","mensagem":"","url":"lista.asp?x=1","abrir_popup":false}"#,
+                r#"{"login_valido":"true","mensagem":"","url":"","abrir_popup":false}"#,
             ))
             .mount(&self.server)
             .await;

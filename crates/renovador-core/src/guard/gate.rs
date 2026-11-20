@@ -172,6 +172,17 @@ impl DefaultGate {
     fn check_breaker(&self, scope: &str, now: DateTime<Utc>) -> Result<(), GuardError> {
         let st = self.persistence.breaker(scope).map_err(fail_closed)?;
         match st.open_until {
+            // Na build de teste, a pausa por falhas seguidas não bloqueia; as
+            // demais (429/503, captcha, senha inválida) continuam valendo.
+            Some(_)
+                if limits::TEST_BUILD
+                    && matches!(
+                        st.reason.as_deref(),
+                        Some(REASON_FAILURES | REASON_FAILURES_LONG)
+                    ) =>
+            {
+                Ok(())
+            }
             Some(until) if until > now => {
                 if st.reason.as_deref() == Some(REASON_RETRY_AFTER) {
                     Err(GuardError::RetryAfter { until })

@@ -20,6 +20,15 @@ use crate::Result;
 /// Arquivo cuja presença mantém o diagnóstico ligado entre execuções.
 const MARKER: &str = ".ligado";
 const LOG: &str = "registro.txt";
+/// Página para acompanhar no navegador; recarrega sozinha.
+pub const INDEX: &str = "index.html";
+const INDEX_HEAD: &str = concat!(
+    "<!doctype html><meta charset=\"utf-8\"><meta http-equiv=\"refresh\" content=\"5\">",
+    "<title>Registro detalhado</title><style>body{font:14px system-ui;margin:16px}",
+    "pre{white-space:pre-wrap;background:#f4f1ea;padding:8px;margin:0}section{margin:0 0 12px}</style>",
+    "<h1>Registro detalhado</h1><p>Atualiza a cada 5 s. O passo mais novo fica no fim. ",
+    "Clique no arquivo para ver a página recebida.</p>\n"
+);
 /// Páginas mantidas; as mais antigas são apagadas.
 const MAX_PAGES: usize = 200;
 
@@ -83,6 +92,16 @@ impl Tracer {
         }
     }
 
+    /// Caminho do `index.html`, criado se faltar.
+    pub fn index_path(&self) -> std::io::Result<PathBuf> {
+        std::fs::create_dir_all(&self.dir)?;
+        let path = self.dir.join(INDEX);
+        if !path.exists() {
+            std::fs::write(&path, INDEX_HEAD)?;
+        }
+        Ok(path)
+    }
+
     fn try_record(
         &self,
         method: &str,
@@ -99,6 +118,7 @@ impl Tracer {
         };
         let now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S");
         let mut line = format!("[{n:04}] {now} {method} {url}\n");
+        let mut file_link = None;
         if let Some(form) = form {
             let names: Vec<&str> = form.iter().map(|(k, _)| *k).collect();
             let _ = writeln!(
@@ -111,6 +131,7 @@ impl Tracer {
             Ok(r) => {
                 let file = format!("{n:04}-{}.{}", page_name(url), extension(r));
                 std::fs::write(self.dir.join(&file), &r.body)?;
+                file_link = Some(file.clone());
                 let _ = writeln!(
                     line,
                     "       HTTP {} · {} bytes · arquivo {file}",
@@ -132,6 +153,20 @@ impl Tracer {
             .append(true)
             .open(self.dir.join(LOG))?;
         log.write_all(line.as_bytes())?;
+
+        let mut row = format!("<section><pre>{}</pre>", escape(line.trim_end()));
+        if let Some(f) = file_link {
+            let _ = write!(
+                row,
+                "<a href=\"{0}\" target=\"_blank\">abrir {0}</a>",
+                escape(&f)
+            );
+        }
+        row.push_str("</section>\n");
+        std::fs::OpenOptions::new()
+            .append(true)
+            .open(self.index_path()?)?
+            .write_all(row.as_bytes())?;
         prune(&self.dir);
         Ok(())
     }
@@ -162,6 +197,13 @@ impl Transport for TracingTransport {
         self.tracer.record("POST", url, Some(form), &res);
         res
     }
+}
+
+fn escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
 }
 
 /// Nome curto da página: `renovacoes.asp?...` vira `renovacoes`.
@@ -329,6 +371,9 @@ mod tests {
         assert!(log.contains("campos enviados: codigo, senha"));
         assert!(!log.contains("segredo") && !log.contains("aluno"));
         assert!(log.contains("1 item(ns) de empréstimo"));
+        let index = std::fs::read_to_string(dir.join(INDEX)).unwrap();
+        assert!(index.contains("href=\"0002-renovacoes.html\""));
+        assert!(!index.contains("segredo"));
 
         // Ao reabrir, continua ligado e numera a partir da última página.
         let again = Tracer::new(dir.clone());

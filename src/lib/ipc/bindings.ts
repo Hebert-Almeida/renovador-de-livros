@@ -51,7 +51,7 @@ export const commands = {
 	diagnosticsTraceStatus: (options?: InvokeOptions) => __TAURI_INVOKE<TraceStatus>("diagnostics_trace_status", undefined, options),
 	/**  Liga ou desliga o registro detalhado; desligar apaga as páginas. */
 	diagnosticsTraceSet: (on: boolean, options?: InvokeOptions) => __TAURI_INVOKE<TraceStatus>("diagnostics_trace_set", { on }, options),
-	/**  Abre a pasta do registro detalhado no explorador de arquivos. */
+	/**  Abre o registro detalhado (`index.html`) no navegador padrão. */
 	diagnosticsTraceOpen: (options?: InvokeOptions) => __TAURI_INVOKE<null>("diagnostics_trace_open", undefined, options),
 };
 

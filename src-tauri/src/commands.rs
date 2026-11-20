@@ -314,13 +314,13 @@ pub async fn diagnostics_trace_set(state: State<'_, AppState>, on: bool) -> Resu
     state.diagnostics_trace_set(on)
 }
 
-/// Abre a pasta do registro detalhado no explorador de arquivos.
+/// Abre o registro detalhado (`index.html`) no navegador padrão.
 #[tauri::command]
 #[specta::specta]
 pub async fn diagnostics_trace_open(app: AppHandle, state: State<'_, AppState>) -> Result<()> {
     use tauri_plugin_opener::OpenerExt as _;
-    let dir = state.diagnostics_trace_dir()?;
+    let index = state.diagnostics_trace_index()?;
     app.opener()
-        .open_path(dir.display().to_string(), None::<&str>)
+        .open_path(index.display().to_string(), None::<&str>)
         .map_err(|e| renovador_core::Error::Invalid(format!("não foi possível abrir a pasta: {e}")))
 }

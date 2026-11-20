@@ -66,6 +66,10 @@ impl AppConfig {
     #[allow(dead_code)] // usada só pelo app (não pelos testes)
     pub fn production(data_dir: PathBuf) -> Result<Self> {
         let tracer = Arc::new(Tracer::new(data_dir.join(TRACE_DIR)));
+        // Na build de teste o registro detalhado já vem ligado.
+        if renovador_core::guard::limits::TEST_BUILD && !tracer.enabled() {
+            let _ = tracer.set_enabled(true);
+        }
         let transport: Arc<dyn Transport> = Arc::new(TracingTransport::new(
             Arc::new(ReqwestTransport::new()?),
             tracer.clone(),
@@ -286,7 +290,11 @@ impl AppState {
             .map(|sc| sc.run_at)
             .min();
         Ok(AppStatus {
-            version: renovador_core::VERSION.to_owned(),
+            version: if renovador_core::guard::limits::TEST_BUILD {
+                format!("{} (build de teste, sem limites)", renovador_core::VERSION)
+            } else {
+                renovador_core::VERSION.to_owned()
+            },
             accounts: accounts.len() as u32,
             automation: automation_state(&accounts, &s.policy, settings.automation_paused),
             next_run_at,
@@ -742,11 +750,10 @@ impl AppState {
         self.diagnostics_trace_status()
     }
 
-    /// Pasta do registro, criada se faltar (para abrir no explorador).
-    pub fn diagnostics_trace_dir(&self) -> Result<PathBuf> {
+    /// `index.html` do registro, criado se faltar (para abrir no navegador).
+    pub fn diagnostics_trace_index(&self) -> Result<PathBuf> {
         let t = self.tracer()?;
-        std::fs::create_dir_all(t.dir()).map_err(io_err(t.dir()))?;
-        Ok(t.dir().to_path_buf())
+        t.index_path().map_err(io_err(t.dir()))
     }
 }
 

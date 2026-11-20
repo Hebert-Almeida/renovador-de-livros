@@ -171,6 +171,14 @@ async fn login_ok_sends_cookies_and_honest_user_agent() {
         .expect(1)
         .mount(&server)
         .await;
+    // Destino do login: visitado como no navegador, conteúdo não usado.
+    Mock::given(method("GET"))
+        .and(path("/5362/mobile/lista.asp"))
+        .and(header("cookie", "TESTE=1"))
+        .respond_with(ResponseTemplate::new(200).set_body_string("<html></html>"))
+        .expect(1)
+        .mount(&server)
+        .await;
     let gate = Arc::new(FakeGate::default());
     let res = client(gate.clone())
         .login(&ticket(&server), &base(&server), "aluno", "s&nha")
@@ -180,8 +188,11 @@ async fn login_ok_sends_cookies_and_honest_user_agent() {
         panic!("esperava login ok")
     };
     assert_eq!(s.loans_path, "renovacoes.asp?idioma=ptbr&acesso=web");
-    assert_eq!(gate.kinds(), ["login_page", "login"]);
-    assert_eq!(gate.outcomes(), [RequestOutcome::Ok, RequestOutcome::Ok]);
+    assert_eq!(gate.kinds(), ["login_page", "login", "login_landing"]);
+    assert_eq!(
+        gate.outcomes(),
+        [RequestOutcome::Ok, RequestOutcome::Ok, RequestOutcome::Ok]
+    );
 }
 
 #[tokio::test]
