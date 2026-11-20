@@ -324,7 +324,7 @@ impl SophiaClient for HttpSophiaClient {
                 .send(&ticket, "validate", &host, Request::Get(&url))
                 .await?;
             let checked = Self::ok_status(&resp).and_then(|()| {
-                if detect::is_sophia_powered(&resp) {
+                if detect::is_sophia_site(&resp) {
                     Ok(())
                 } else {
                     Err(Error::InvalidLibrary(
@@ -369,18 +369,24 @@ impl SophiaClient for HttpSophiaClient {
             Err(e) => return self.finish(permit, &resp, Err(e)),
         };
         if parsed.login_valido.trim().eq_ignore_ascii_case("true") {
-            if parsed.url.trim().is_empty() {
-                return self.finish(
-                    permit,
-                    &resp,
-                    Err(Error::Parse("login sem url da lista".into())),
-                );
-            }
             self.gate
                 .report(permit, Some(resp.status), RequestOutcome::Ok, None);
+            // 3. Abre a página de destino do login, como o navegador faz: é
+            // ela que deixa a sessão pronta para a lista. O conteúdo não é
+            // usado, e uma falha aqui não impede a leitura da lista.
+            let landing = parsed.url.trim();
+            if !landing.is_empty()
+                && let Ok((url, _)) = self.mobile_url(base_url, landing)
+            {
+                let (permit, resp) = self
+                    .send(ticket, "login_landing", &host, Request::Get(&url))
+                    .await?;
+                self.gate
+                    .report(permit, Some(resp.status), RequestOutcome::Ok, None);
+            }
             Ok(LoginResult::Ok(LoggedSession {
                 base_url: self.base(base_url)?.to_string(),
-                loans_path: parsed.url,
+                loans_path: selectors::LOANS_PAGE.to_owned(),
             }))
         } else {
             self.gate.report(

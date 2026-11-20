@@ -171,6 +171,14 @@ async fn login_ok_sends_cookies_and_honest_user_agent() {
         .expect(1)
         .mount(&server)
         .await;
+    // Destino do login: visitado como no navegador, conteúdo não usado.
+    Mock::given(method("GET"))
+        .and(path("/5362/mobile/lista.asp"))
+        .and(header("cookie", "TESTE=1"))
+        .respond_with(ResponseTemplate::new(200).set_body_string("<html></html>"))
+        .expect(1)
+        .mount(&server)
+        .await;
     let gate = Arc::new(FakeGate::default());
     let res = client(gate.clone())
         .login(&ticket(&server), &base(&server), "aluno", "s&nha")
@@ -179,9 +187,12 @@ async fn login_ok_sends_cookies_and_honest_user_agent() {
     let LoginResult::Ok(s) = res else {
         panic!("esperava login ok")
     };
-    assert_eq!(s.loans_path, "lista.asp?x=1");
-    assert_eq!(gate.kinds(), ["login_page", "login"]);
-    assert_eq!(gate.outcomes(), [RequestOutcome::Ok, RequestOutcome::Ok]);
+    assert_eq!(s.loans_path, "renovacoes.asp?idioma=ptbr&acesso=web");
+    assert_eq!(gate.kinds(), ["login_page", "login", "login_landing"]);
+    assert_eq!(
+        gate.outcomes(),
+        [RequestOutcome::Ok, RequestOutcome::Ok, RequestOutcome::Ok]
+    );
 }
 
 #[tokio::test]
@@ -346,6 +357,29 @@ async fn validate_library_requires_sophia_header() {
         .await
         .unwrap_err();
     assert!(matches!(err, Error::InvalidLibrary(_)));
+}
+
+#[tokio::test]
+async fn validate_library_accepts_sophia_page_without_header() {
+    // O servidor real pode não enviar `x-powered-by: Sophia`; a página do
+    // Terminal Web mobile tem título e logotipo próprios.
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/5362/mobile/login.asp"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .insert_header("x-powered-by", "ASP.NET")
+                .set_body_string(
+                    "<html><head><title>Sophia Biblioteca - Mobile</title></head>                     <body><img id=\"imglogotiposophia\" alt=\"Sophia\"></body></html>",
+                ),
+        )
+        .mount(&server)
+        .await;
+    let h = client(Arc::new(FakeGate::default()))
+        .validate_library(&base(&server))
+        .await
+        .unwrap();
+    assert_eq!(h, host(&server));
 }
 
 #[tokio::test]

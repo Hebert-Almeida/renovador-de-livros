@@ -4,7 +4,21 @@
 //! ser afrouxadas por arquivo de configuração, CLI ou variável de ambiente.
 //! A política remota assinada só pode apertá-las (ver `guard::RemotePolicy`).
 
+//!
+//! Exceção única: a feature de compilação `sem-limites` gera uma build de
+//! teste manual, com outro nome de arquivo, que dispensa as cotas por dia, a
+//! espera entre sessões manuais e o disjuntor. O intervalo entre requisições,
+//! o teto por sessão e a pausa após 429/503 continuam valendo. O instalador
+//! normal nunca é compilado com ela.
+
 use std::time::Duration;
+
+/// `true` só na build de teste (`--features sem-limites`).
+pub const TEST_BUILD: bool = cfg!(feature = "sem-limites");
+
+const fn cota(normal: u32) -> u32 {
+    if TEST_BUILD { 1_000 } else { normal }
+}
 
 /// Requisições simultâneas em toda a instalação.
 pub const MAX_CONCURRENT_REQUESTS: usize = 1;
@@ -16,26 +30,27 @@ pub const MAX_REQUEST_JITTER: Duration = Duration::from_secs(1);
 pub const MAX_REQUESTS_PER_SESSION: u32 = 20;
 
 /// Sessões automáticas por conta por dia.
-pub const MAX_AUTO_SESSIONS_PER_ACCOUNT_DAY: u32 = 2;
+pub const MAX_AUTO_SESSIONS_PER_ACCOUNT_DAY: u32 = cota(2);
 /// Sessões manuais por conta por dia.
-pub const MAX_MANUAL_SESSIONS_PER_ACCOUNT_DAY: u32 = 4;
+pub const MAX_MANUAL_SESSIONS_PER_ACCOUNT_DAY: u32 = cota(4);
 /// Espera mínima entre sessões manuais da mesma conta.
-pub const MIN_MANUAL_SESSION_GAP: Duration = Duration::from_secs(30 * 60);
+pub const MIN_MANUAL_SESSION_GAP: Duration =
+    Duration::from_secs(if TEST_BUILD { 0 } else { 30 * 60 });
 /// Sessões por instalação por dia (todas as contas somadas).
-pub const MAX_SESSIONS_PER_INSTALL_DAY: u32 = 10;
+pub const MAX_SESSIONS_PER_INSTALL_DAY: u32 = cota(10);
 
 /// Contas por instalação.
 pub const MAX_ACCOUNTS: u32 = 3;
 /// Contas criadas por padrão no onboarding.
 pub const DEFAULT_ACCOUNTS: u32 = 1;
 /// Logins distintos testados por instalação por dia.
-pub const MAX_DISTINCT_LOGINS_PER_DAY: u32 = 3;
+pub const MAX_DISTINCT_LOGINS_PER_DAY: u32 = cota(3);
 
 /// Falhas consecutivas que abrem o breaker por [`BREAKER_SHORT_PAUSE`].
-pub const BREAKER_SHORT_THRESHOLD: u32 = 3;
+pub const BREAKER_SHORT_THRESHOLD: u32 = cota(3);
 pub const BREAKER_SHORT_PAUSE: Duration = Duration::from_secs(6 * 60 * 60);
 /// Falhas consecutivas que abrem o breaker por [`BREAKER_LONG_PAUSE`] (com notificação).
-pub const BREAKER_LONG_THRESHOLD: u32 = 5;
+pub const BREAKER_LONG_THRESHOLD: u32 = cota(5);
 pub const BREAKER_LONG_PAUSE: Duration = Duration::from_secs(24 * 60 * 60);
 
 /// Pausa mínima após HTTP 429/503, mesmo se `Retry-After` for menor.

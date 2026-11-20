@@ -6,6 +6,7 @@ async function mockIpc(page: Page) {
 	await page.addInitScript(() => {
 		const handlers: Record<string, () => unknown> = {
 			app_status: () => ({ version: '2.0.0-alpha.0', accounts: 1, automation: {}, next_run_at: null, onboarding_done: true }),
+			diagnostics_trace_status: () => ({ enabled: true, path: 'C:/dados/diagnostico', pages: 2 }),
 			diagnostics_requests: () => [
 				{ id: 1, account_id: 1, host: 'biblioteca.sophia.com.br', at: '2026-11-15T10:00:00Z', kind: 'login', session_id: 's', http_status: 200, outcome: 'ok' }
 			]

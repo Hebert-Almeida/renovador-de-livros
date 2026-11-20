@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest';
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/svelte';
 import { mockCommands, clearMocks } from '#lib/ipc/mock.ts';
 import SobrePage from '#lib/features/sobre/SobrePage.svelte';
@@ -67,6 +67,46 @@ describe('SobrePage', () => {
 		});
 		render(SobrePage);
 		expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível carregar o registro.');
+	});
+});
+
+describe('registro detalhado', () => {
+	it('liga, mostra a pasta e abre', async () => {
+		const { fireEvent } = await import('@testing-library/svelte');
+		let enabled = false;
+		let opened = 0;
+		const status = () => ({ enabled, path: 'C:\dados\diagnostico', pages: enabled ? 3 : 0 });
+		mockCommands({
+			app_status: () => ({ version: '1', accounts: 0, automation: {}, next_run_at: null, onboarding_done: true }),
+			diagnostics_requests: () => [],
+			diagnostics_trace_status: status,
+			diagnostics_trace_set: (a) => {
+				enabled = a.on as boolean;
+				return status();
+			},
+			diagnostics_trace_open: () => {
+				opened++;
+				return null;
+			}
+		});
+		render(SobrePage);
+		const sw = await screen.findByRole('switch', { name: 'Gravar as páginas recebidas' });
+		expect(sw).toHaveAttribute('aria-checked', 'false');
+		expect(screen.queryByRole('button', { name: 'Abrir no navegador' })).toBeNull();
+		await fireEvent.click(sw);
+		expect(await screen.findByText('3 páginas gravadas.')).toBeInTheDocument();
+		expect(screen.getByText('C:\dados\diagnostico')).toBeInTheDocument();
+		await fireEvent.click(screen.getByRole('button', { name: 'Abrir no navegador' }));
+		await vi.waitFor(() => expect(opened).toBe(1));
+	});
+
+	it('avisa quando não está disponível', async () => {
+		mockCommands({
+			app_status: () => ({ version: '1', accounts: 0, automation: {}, next_run_at: null, onboarding_done: true }),
+			diagnostics_requests: () => []
+		});
+		render(SobrePage);
+		expect(await screen.findByText('O registro detalhado não está disponível.')).toBeInTheDocument();
 	});
 });
 

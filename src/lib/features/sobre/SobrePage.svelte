@@ -6,7 +6,9 @@
 	import DataTable from '#lib/components/DataTable.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import Skeleton from '#lib/components/Skeleton.svelte';
+	import Toggle from '#lib/components/Toggle.svelte';
 	import { commands } from '#lib/ipc/index.ts';
+	import type { TraceStatus } from '#lib/ipc/bindings.ts';
 	import { reveal } from '#lib/motion/index.ts';
 	import t from '#lib/i18n/pt-BR/sobre.ts';
 	import { jsLicenses, rustLicenses } from './licenses.ts';
@@ -18,6 +20,40 @@
 	let diagState: 'loading' | 'ready' | 'error' = $state('loading');
 	let announce = $state('');
 	let root: HTMLElement | undefined = $state();
+	let trace: TraceStatus | null = $state(null);
+	let traceFailed = $state(false);
+	let traceBusy = $state(false);
+	let traceMessage = $state('');
+
+	async function loadTrace() {
+		try {
+			trace = await commands.diagnosticsTraceStatus();
+		} catch {
+			traceFailed = true;
+		}
+	}
+
+	async function setTrace(on: boolean) {
+		traceBusy = true;
+		try {
+			trace = await commands.diagnosticsTraceSet(on);
+			traceMessage = on ? t.trace.on : t.trace.off;
+		} catch {
+			traceMessage = t.trace.error;
+			await loadTrace();
+		} finally {
+			traceBusy = false;
+		}
+	}
+
+	async function openTrace() {
+		try {
+			await commands.diagnosticsTraceOpen();
+			await loadTrace();
+		} catch {
+			traceMessage = t.trace.openError;
+		}
+	}
 
 	async function loadVersion() {
 		try {
@@ -44,6 +80,7 @@
 		if (root) reveal([...root.querySelectorAll('.sobre-section')]);
 		loadVersion();
 		loadDiagnostics();
+		loadTrace();
 	});
 </script>
 
@@ -147,6 +184,33 @@
 			/>
 		{/if}
 	</section>
+
+	<section class="sobre-section" aria-labelledby="sobre-trace">
+		<h2 id="sobre-trace">{t.trace.heading}</h2>
+		<p>{t.trace.description}</p>
+		{#if traceFailed}
+			<p>{t.trace.unavailable}</p>
+		{:else if trace}
+			<Toggle
+				label={t.trace.toggle}
+				description={t.trace.toggleHint}
+				checked={trace.enabled}
+				disabled={traceBusy}
+				onchange={setTrace}
+			/>
+			{#if trace.enabled}
+				<p>{t.trace.howTo}</p>
+				<p>{t.trace.folder}: <code class="path">{trace.path}</code></p>
+				<p>{t.trace.pages(trace.pages)}</p>
+				<div>
+					<Button onclick={openTrace}>{t.trace.open}</Button>
+				</div>
+			{/if}
+		{:else}
+			<Skeleton lines={2} />
+		{/if}
+		<p class="visually-hidden" role="status" aria-live="polite">{traceMessage}</p>
+	</section>
 </div>
 
 <style>
@@ -157,6 +221,9 @@
 	.sobre-section {
 		display: grid;
 		gap: var(--space-3);
+	}
+	.path {
+		overflow-wrap: anywhere;
 	}
 	.lead {
 		max-width: 60ch;

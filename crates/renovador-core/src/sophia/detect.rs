@@ -27,6 +27,21 @@ pub fn is_sophia_powered(resp: &HttpResponse) -> bool {
         .is_some_and(|v| v.to_ascii_lowercase().contains("sophia"))
 }
 
+/// Marcas do Terminal Web Sophia (mobile) no HTML: título padrão, logotipo
+/// e o endpoint de login usado pelo formulário.
+const SOPHIA_PAGE_MARKERS: &[&str] = &["sophia biblioteca", "logotiposophia", "ajx_efetua_login"];
+
+/// `true` se a resposta parece vir de um Terminal Web Sophia: pelo
+/// cabeçalho `x-powered-by` ou, como o servidor nem sempre o envia, por
+/// marcas da própria página.
+pub fn is_sophia_site(resp: &HttpResponse) -> bool {
+    if is_sophia_powered(resp) {
+        return true;
+    }
+    let body = resp.body.to_ascii_lowercase();
+    SOPHIA_PAGE_MARKERS.iter().any(|m| body.contains(m))
+}
+
 /// Host (com porta, se houver) de uma URL.
 pub fn host_of(url: &str) -> Option<String> {
     let u = Url::parse(url).ok()?;

@@ -17,6 +17,7 @@ use renovador_core::guard::{
 use renovador_core::keys::{self, KeyStore, OsKeyStore};
 use renovador_core::model::*;
 use renovador_core::sophia::client::{ClientConfig, HttpSophiaClient, ReqwestTransport};
+use renovador_core::sophia::trace::{Tracer, TracingTransport};
 use renovador_core::sophia::{LoginResult, SophiaClient, Transport};
 use renovador_core::store::{DbKey, Store};
 use renovador_core::{Error, Result, planner};
@@ -29,6 +30,8 @@ pub const SALT_FILE: &str = "argon2.salt";
 pub const POLICY_DIR: &str = "policy";
 /// Reagendamentos sem empréstimo (sync) só até este horizonte.
 pub const MAX_RESCHEDULE_DAYS: i64 = 30;
+/// Pasta do registro detalhado (diagnóstico), dentro do diretório de dados.
+pub const TRACE_DIR: &str = "diagnostico";
 /// Tamanho do lote ao exportar o histórico.
 const EXPORT_BATCH: u32 = 500;
 
@@ -46,19 +49,39 @@ pub struct AppConfig {
     pub client_config: ClientConfig,
     /// Chave pública Ed25519 da política remota (`None` = sem política remota).
     pub policy_public_key: Option<[u8; 32]>,
+    /// Registro detalhado das páginas (`None` = indisponível, como nos testes).
+    pub tracer: Option<Arc<Tracer>>,
+}
+
+/// Estado do registro detalhado, mostrado na tela Sobre.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type)]
+pub struct TraceStatus {
+    pub enabled: bool,
+    pub path: String,
+    pub pages: u32,
 }
 
 impl AppConfig {
     /// Configuração de produção.
     #[allow(dead_code)] // usada só pelo app (não pelos testes)
     pub fn production(data_dir: PathBuf) -> Result<Self> {
+        let tracer = Arc::new(Tracer::new(data_dir.join(TRACE_DIR)));
+        // Na build de teste o registro detalhado já vem ligado.
+        if renovador_core::guard::limits::TEST_BUILD && !tracer.enabled() {
+            let _ = tracer.set_enabled(true);
+        }
+        let transport: Arc<dyn Transport> = Arc::new(TracingTransport::new(
+            Arc::new(ReqwestTransport::new()?),
+            tracer.clone(),
+        ));
         Ok(Self {
             data_dir,
             keystore: Arc::new(OsKeyStore),
             clock: Arc::new(SystemClock),
-            transport: Arc::new(ReqwestTransport::new()?),
+            transport,
             client_config: ClientConfig::default(),
             policy_public_key: None,
+            tracer: Some(tracer),
         })
     }
 
@@ -267,7 +290,11 @@ impl AppState {
             .map(|sc| sc.run_at)
             .min();
         Ok(AppStatus {
-            version: renovador_core::VERSION.to_owned(),
+            version: if renovador_core::guard::limits::TEST_BUILD {
+                format!("{} (build de teste, sem limites)", renovador_core::VERSION)
+            } else {
+                renovador_core::VERSION.to_owned()
+            },
             accounts: accounts.len() as u32,
             automation: automation_state(&accounts, &s.policy, settings.automation_paused),
             next_run_at,
@@ -693,6 +720,40 @@ impl AppState {
 
     pub fn diagnostics_requests(&self, limit: u32) -> Result<Vec<RequestLogEntry>> {
         self.store()?.requests_recent(limit.clamp(1, 1000))
+    }
+
+    fn tracer(&self) -> Result<Arc<Tracer>> {
+        self.inner
+            .read()
+            .unwrap_or_else(|p| p.into_inner())
+            .as_ref()
+            .ok_or_else(not_ready)?
+            .config
+            .tracer
+            .clone()
+            .ok_or_else(|| Error::Invalid("registro detalhado indisponível".into()))
+    }
+
+    pub fn diagnostics_trace_status(&self) -> Result<TraceStatus> {
+        let t = self.tracer()?;
+        Ok(TraceStatus {
+            enabled: t.enabled(),
+            path: t.dir().display().to_string(),
+            pages: t.page_count(),
+        })
+    }
+
+    /// Liga ou desliga; desligar apaga as páginas gravadas.
+    pub fn diagnostics_trace_set(&self, on: bool) -> Result<TraceStatus> {
+        let t = self.tracer()?;
+        t.set_enabled(on).map_err(io_err(t.dir()))?;
+        self.diagnostics_trace_status()
+    }
+
+    /// `index.html` do registro, criado se faltar (para abrir no navegador).
+    pub fn diagnostics_trace_index(&self) -> Result<PathBuf> {
+        let t = self.tracer()?;
+        t.index_path().map_err(io_err(t.dir()))
     }
 }
 

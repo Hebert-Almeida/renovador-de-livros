@@ -35,6 +35,8 @@ keyring = "4.2.0"
 
 [features]
 test-util = []
+# Build de teste manual: sem cotas diárias, espera manual nem disjuntor.
+sem-limites = []
 
 [dev-dependencies]
 renovador-core = { path = ".", features = ["test-util"] }

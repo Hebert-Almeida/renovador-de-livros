@@ -48,3 +48,7 @@ tauri-plugin-single-instance = "2"
 
 [target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
 tauri-plugin-renovador-bg = { path = "../plugins/tauri-plugin-renovador-bg" }
+
+[features]
+# Build de teste manual (ver `guard::limits::TEST_BUILD`).
+sem-limites = ["renovador-core/sem-limites"]
