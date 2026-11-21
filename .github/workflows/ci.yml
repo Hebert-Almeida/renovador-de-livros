@@ -105,7 +105,7 @@ jobs:
       - name: Testes JVM do plugin
         working-directory: src-tauri/gen/android
         run: ./gradlew --no-daemon :tauri-plugin-renovador-bg:testDebugUnitTest
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: apk-debug
           path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
@@ -173,7 +173,7 @@ jobs:
       # Retentativas só absorvem a recarga do Vite (dev) na primeira visita; ficam marcadas como "flaky".
       - name: Suítes de tela, rotas e orçamento de JS
         run: node scripts/test-telas.mjs --retries=2
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-falhas
